@@ -20,7 +20,7 @@
 })();
 
 /* ThinkNest service worker — network-first for pages (never a bare error), cache-first for files */
-const VERSION = 'thinknest-v1';
+const VERSION = 'thinknest-v2';
 const CORE = ['./', 'manifest.json', 'icon-192.png', 'icon-512.png', 'privacy_policy.html'];
 const ART = [];
 const ROOT = new URL('./', self.registration.scope).pathname;

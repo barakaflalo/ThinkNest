@@ -10,10 +10,12 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>ThinkNest</title>
 <style>:root{--bg:#0b0b0d;--bg2:#15151a;--card:#1b1b22;--card2:#24242e;--fg:#f4efe3;--muted:#9a95a6;--acc:#e8b84a;--acc2:#ffd877;--line:#34343f;--good:#59d28a;--bad:#ff6b6b;--on-acc:#1a1405;--r:16px}
-:root[data-theme=night]{--bg:#070b16;--bg2:#0e1426;--card:#141c34;--card2:#1c2645;--fg:#e9eefc;--muted:#8d9ac0;--acc:#6aa9ff;--acc2:#a8ceff;--line:#27335a;--on-acc:#04122b}
-:root[data-theme=forest]{--bg:#0a120d;--bg2:#101c14;--card:#16261b;--card2:#1e3425;--fg:#ecf5e8;--muted:#8fae97;--acc:#7bd88f;--acc2:#b4efc0;--line:#294532;--on-acc:#06200f}
-:root[data-theme=sunset]{--bg:#150b0e;--bg2:#211016;--card:#2c161e;--card2:#3a1d28;--fg:#fff0ea;--muted:#c49a9c;--acc:#ff8a5c;--acc2:#ffb894;--line:#4d2833;--on-acc:#2b0d02}
-:root[data-theme=light]{--bg:#f4efe6;--bg2:#ebe4d6;--card:#fffdf8;--card2:#f1eadc;--fg:#231f17;--muted:#7a7262;--acc:#b8860b;--acc2:#8c6508;--line:#d9cfba;--on-acc:#fff}
+:root[data-mode=day]{--bg:#f4efe6;--bg2:#ebe4d6;--card:#fffdf8;--card2:#f1eadc;--fg:#231f17;--muted:#7a7262;--line:#d9cfba;--on-acc:#fff;--good:#1f9d63;--bad:#c42f45}
+:root[data-theme=gold]{--acc:#e8b84a;--acc2:#ffd877}:root[data-theme=gold][data-mode=day]{--acc:#b8860b;--acc2:#8c6508}
+:root[data-theme=silver]{--acc:#c9d1dc;--acc2:#e6ebf2;--on-acc:#10141c}:root[data-theme=silver][data-mode=day]{--acc:#5d6b7e;--acc2:#3f4b5c;--on-acc:#fff}
+:root[data-theme=emerald]{--acc:#4fd18b;--acc2:#8cebb6;--on-acc:#05200f}:root[data-theme=emerald][data-mode=day]{--acc:#1f9d63;--acc2:#157348;--on-acc:#fff}
+:root[data-theme=ruby]{--acc:#ff6b7a;--acc2:#ff9aa5;--on-acc:#2b0610}:root[data-theme=ruby][data-mode=day]{--acc:#c42f45;--acc2:#9b2236;--on-acc:#fff}
+:root[data-theme=ocean]{--acc:#5aaeff;--acc2:#9bcdff;--on-acc:#04122b}:root[data-theme=ocean][data-mode=day]{--acc:#1f78c8;--acc2:#165a96;--on-acc:#fff}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;overscroll-behavior:none;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 body{display:flex;flex-direction:column}
@@ -114,6 +116,40 @@ input.txt:focus{border-color:var(--acc)}
 .two .ctrl{grid-template-columns:1fr 1fr}
 .two .ctrl button{min-height:clamp(52px,8.5vh,84px)}
 .two .ctrl [data-k=ccw]{order:1}.two .ctrl [data-k=cw]{order:2}.two .ctrl [data-k=left]{order:3}.two .ctrl [data-k=right]{order:4}.two .ctrl [data-k=drop]{order:5;grid-column:1/3}
+
+/* ---- מעטפת AppNest: בית, כלים, הגדרות, אודות, אלבום ---- */
+.hero{position:relative;text-align:center;padding:6px 0 4px}
+.hero .me{display:flex;align-items:center;gap:8px;min-height:48px;padding:4px 14px 4px 8px;border-radius:999px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-weight:700;font-size:15px}
+.hero .me .av{font-size:26px}
+.hero .toprow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.quick{display:flex;gap:8px}.quick button{width:48px;height:48px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:21px;cursor:pointer}
+.wordmark{font-size:36px;font-weight:900;letter-spacing:.5px;margin-top:6px}.wordmark i{font-style:normal;color:var(--acc)}
+.sub{color:var(--muted);font-size:14px}
+.floaty{display:flex;justify-content:center;gap:14px;font-size:26px;opacity:.85;margin-top:4px}
+.dailyb{display:flex;align-items:center;gap:12px;width:100%;min-height:72px;border-radius:var(--r);border:1px solid var(--acc);background:linear-gradient(120deg,var(--card2),var(--card));cursor:pointer;padding:10px 14px;text-align:start;margin-top:10px}
+.dailyb .ic{font-size:34px}.dailyb b{display:block;font-size:17px}.dailyb small{color:var(--muted);font-size:13px}
+.dailyb.done{border-color:var(--good)}
+.week{display:flex;justify-content:space-between;gap:4px;margin-top:8px;direction:ltr}
+.week i{flex:1;text-align:center;font-style:normal;font-size:11px;color:var(--muted);padding:6px 0;border-radius:10px;background:var(--card);border:1px solid var(--line)}
+.week i.on{background:var(--acc);color:var(--on-acc);border-color:var(--acc);font-weight:800}.week i.today{border-color:var(--acc)}
+.resume{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;border-radius:var(--r);border:1px solid var(--line);background:var(--card);cursor:pointer;padding:8px 14px;margin-top:10px;text-align:start;font-weight:700}
+.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:4px 0 8px}
+.tools button{min-height:76px;border-radius:16px;border:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:13px;font-weight:700;cursor:pointer}
+.tools button i{font-style:normal;font-size:26px}
+.badge{text-align:center;color:var(--muted);font-size:12px;padding:6px 0}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:4px 0}
+.sw small{display:block;color:var(--muted);font-size:12px}
+.sw input[type=checkbox]{width:26px;height:26px;accent-color:var(--acc)}
+.card h3{margin:0 0 10px;font-size:16px}
+.card+.card{margin-top:10px}
+.avs{display:flex;flex-wrap:wrap;gap:8px}.avs button{width:52px;height:52px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:28px;cursor:pointer}.avs button.on{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc) inset}
+.stat3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}.stat3 b{display:block;font-size:22px;color:var(--acc)}.stat3 span{font-size:12px;color:var(--muted)}
+.stk{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stk button{min-height:96px;border-radius:16px;border:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;cursor:pointer;padding:6px;opacity:.38;filter:grayscale(1)}
+.stk button.got{opacity:1;filter:none;border-color:var(--acc)}.stk button i{font-style:normal;font-size:34px}
+.rules h2{margin:14px 0 6px;font-size:18px;color:var(--acc)}.rules p{margin:6px 0;line-height:1.55}
+.gbig{font-size:64px;text-align:center}
+.dots{display:flex;gap:6px;justify-content:center;margin:12px 0}.dots i{width:9px;height:9px;border-radius:50%;background:var(--line)}.dots i.on{background:var(--acc)}
+.linkbtn{text-decoration:none;color:inherit}
 </style>
 </head>
 <body>
@@ -123,6 +159,10 @@ input.txt:focus{border-color:var(--acc)}
 <div id="play" class="sc"></div>
 <div id="settings" class="sc"></div>
 <div id="lobby" class="sc"></div>
+<div id="rules" class="sc"></div>
+<div id="stats" class="sc"></div>
+<div id="album" class="sc"></div>
+<div id="about" class="sc"></div>
 <script>
 const ART_FILES = [];
 const TETRIS_LEVELS = [{"n":1,"w":1,"lines":7,"speed":1,"garbage":0,"t3":30,"t2":40,"lim":65,"seed":5031},{"n":2,"w":1,"lines":8,"speed":1,"garbage":0,"t3":30,"t2":45,"lim":70,"seed":5062},{"n":3,"w":1,"lines":9,"speed":1,"garbage":0,"t3":35,"t2":50,"lim":80,"seed":5093},{"n":4,"w":1,"lines":9,"speed":1,"garbage":0,"t3":35,"t2":50,"lim":80,"seed":5124},{"n":5,"w":1,"lines":10,"speed":2,"garbage":0,"t3":35,"t2":55,"lim":80,"seed":5155},{"n":6,"w":1,"lines":11,"speed":2,"garbage":0,"t3":45,"t2":65,"lim":100,"seed":5186},{"n":7,"w":1,"lines":12,"speed":2,"garbage":0,"t3":50,"t2":70,"lim":110,"seed":5217},{"n":8,"w":1,"lines":13,"speed":3,"garbage":22,"t3":50,"t2":75,"lim":110,"seed":5248},{"n":9,"w":2,"lines":14,"speed":3,"garbage":0,"t3":55,"t2":80,"lim":125,"seed":5279},{"n":10,"w":2,"lines":15,"speed":3,"garbage":0,"t3":55,"t2":80,"lim":120,"seed":5310},{"n":11,"w":2,"lines":15,"speed":4,"garbage":0,"t3":55,"t2":80,"lim":125,"seed":5341},{"n":12,"w":2,"lines":16,"speed":4,"garbage":20,"t3":60,"t2":85,"lim":130,"seed":5372},{"n":13,"w":2,"lines":17,"speed":4,"garbage":0,"t3":60,"t2":85,"lim":135,"seed":5403},{"n":14,"w":2,"lines":18,"speed":5,"garbage":0,"t3":70,"t2":100,"lim":150,"seed":5434},{"n":15,"w":2,"lines":19,"speed":5,"garbage":0,"t3":70,"t2":100,"lim":155,"seed":5465},{"n":16,"w":2,"lines":20,"speed":5,"garbage":18,"t3":70,"t2":100,"lim":155,"seed":5496},{"n":17,"w":3,"lines":20,"speed":6,"garbage":0,"t3":70,"t2":105,"lim":160,"seed":5527},{"n":18,"w":3,"lines":21,"speed":6,"garbage":0,"t3":75,"t2":110,"lim":170,"seed":5558},{"n":19,"w":3,"lines":22,"speed":6,"garbage":0,"t3":80,"t2":120,"lim":180,"seed":5589},{"n":20,"w":3,"lines":23,"speed":7,"garbage":16,"t3":75,"t2":110,"lim":170,"seed":5620},{"n":21,"w":3,"lines":24,"speed":7,"garbage":0,"t3":85,"t2":120,"lim":185,"seed":5651},{"n":22,"w":3,"lines":25,"speed":7,"garbage":0,"t3":85,"t2":125,"lim":195,"seed":5682},{"n":23,"w":3,"lines":26,"speed":8,"garbage":0,"t3":90,"t2":130,"lim":200,"seed":5713},{"n":24,"w":3,"lines":26,"speed":8,"garbage":14,"t3":100,"t2":145,"lim":225,"seed":5744},{"n":25,"w":4,"lines":27,"speed":8,"garbage":0,"t3":95,"t2":140,"lim":215,"seed":5775},{"n":26,"w":4,"lines":28,"speed":9,"garbage":0,"t3":100,"t2":145,"lim":225,"seed":5806},{"n":27,"w":4,"lines":29,"speed":9,"garbage":0,"t3":105,"t2":150,"lim":235,"seed":5837},{"n":28,"w":4,"lines":30,"speed":9,"garbage":12,"t3":105,"t2":150,"lim":230,"seed":5868},{"n":29,"w":4,"lines":31,"speed":9,"garbage":0,"t3":110,"t2":155,"lim":245,"seed":5899},{"n":30,"w":4,"lines":32,"speed":10,"garbage":0,"t3":115,"t2":165,"lim":250,"seed":5930},{"n":31,"w":4,"lines":32,"speed":10,"garbage":0,"t3":110,"t2":155,"lim":245,"seed":5961},{"n":32,"w":4,"lines":33,"speed":10,"garbage":10,"t3":110,"t2":155,"lim":245,"seed":5992},{"n":33,"w":5,"lines":34,"speed":11,"garbage":0,"t3":120,"t2":170,"lim":265,"seed":6023},{"n":34,"w":5,"lines":35,"speed":11,"garbage":0,"t3":125,"t2":180,"lim":275,"seed":6054},{"n":35,"w":5,"lines":36,"speed":11,"garbage":0,"t3":120,"t2":170,"lim":265,"seed":6085},{"n":36,"w":5,"lines":37,"speed":12,"garbage":10,"t3":125,"t2":180,"lim":280,"seed":6116},{"n":37,"w":5,"lines":37,"speed":12,"garbage":0,"t3":130,"t2":185,"lim":290,"seed":6147},{"n":38,"w":5,"lines":38,"speed":12,"garbage":0,"t3":130,"t2":185,"lim":290,"seed":6178},{"n":39,"w":5,"lines":39,"speed":13,"garbage":0,"t3":135,"t2":195,"lim":300,"seed":6209},{"n":40,"w":5,"lines":40,"speed":13,"garbage":10,"t3":125,"t2":180,"lim":280,"seed":6240}];
@@ -1106,10 +1146,75 @@ ar: {
   for (const l in A) Object.assign(LANG[l], A[l]);
 })();
 
+/* ===== src/i18n_shell.js ===== */
+/* מחרוזות המעטפת: בית, הגדרות, אודות, חוקים, סטטיסטיקה, אלבום, מדריך */
+(function () {
+  const ST = ['first_tetris', 'first_screws', 'first_rope', 'first_td', 'stars10', 'stars50', 'stars150', 'three', 'cpu', 'two', 'online', 'daily1', 'streak3', 'streak7'];
+  const A = {
+    he: {
+      cont: 'המשך', daily: 'אתגר יומי', daily_done: 'הושלם היום ✓', streak_n: 'רצף {n} ימים', rules: 'חוקים', album: 'אלבום', stats: 'הישגים', me: 'השחקן שלי', pick_av: 'בחרו חיה',
+      look: 'מראה', th_gold: 'זהב', th_silver: 'כסף', th_emerald: 'אזמרגד', th_ruby: 'רובי', th_ocean: 'אוקיינוס', daymode: 'יום / לילה', night: 'לילה', day: 'יום', gameplay: 'משחק',
+      backup: 'גיבוי ושחזור', backup_d: 'הכול נשמר על הטלפון בלבד. קובץ גיבוי שומר הגדרות, שלבים, כוכבים ומדבקות.', export: 'ייצוא', import: 'שחזור', exported: 'קובץ הגיבוי נשמר', bad_file: 'הקובץ לא מתאים', import_q: 'לשחזר גיבוי של {n} מתאריך {d}? זה יחליף את ההתקדמות הנוכחית.',
+      guide: 'מדריך', reset_all2: 'מחיקת הכול', reset_q1: 'למחוק את כל ההתקדמות, ההגדרות והמדבקות?', reset_q2: 'בטוחים? אי אפשר לבטל.', reset_yes: 'כן, למחוק הכול',
+      a_ver: 'גרסה', a_dev: 'פיתוח', a_plat: 'פלטפורמה', a_store: 'אחסון', a_local: 'על המכשיר בלבד', a_levels: 'שלבים', a_lic: 'רישיון', a_storeLink: 'חנות AppNest', a_share: 'שתפו את האפליקציה', a_feedback: 'שלחו משוב', a_privacy: 'מדיניות פרטיות', install: 'התקנה על המסך', a_disc: 'משחקים בהשראת סגנונות קלאסיים. השמות, הדמויות והציורים מקוריים ואינם קשורים למשחקים אחרים. אונליין עובד ישירות בין הטלפונים, בלי שרת ובלי חשבון.', share_txt: 'ThinkNest — משחקי חשיבה ואסטרטגיה. {n} מזמין/ה אותך לשחק:', copied: 'הקישור הועתק',
+      s_streak: 'רצף נוכחי', s_best: 'רצף שיא', s_dailies: 'אתגרים', s_done: 'שלבים', s_stars: 'כוכבים', s_three: '3 כוכבים', s_wins: 'ניצחונות', s_games: 'משחקים',
+      ru_stars: 'כוכבים', ru_tetris: '<p>מסדרים ענפים נופלים לשורות מלאות. כל שורה מלאה נעלמת. בשלבים צריך להשלים מספר שורות לפני שנגמר הזמן.</p><p>גוררים כדי להזיז, מקישים לסיבוב, מחליקים מהר למטה כדי להפיל, ומקישים על "שמור" כדי להחליף חתיכה. במצב קרב, כל שורה שמנקים שולחת אבנים ליריב.</p>', ru_screws: '<p>מוציאים ברגים מהקרשים אל המגש. בורג מכוסה בקרש אי אפשר להוציא. שני ברגים באותו צבע במגש מתחברים ונעלמים. קרש בלי ברגים נופל. מפילים את כל הקרשים.</p><p>אם המגש מלא ואין התאמה — נתקעים: חוזרים צעד או מתחילים מחדש. כוכבים לפי כמה עזרות (רמז, ביטול, התחלה מחדש) השתמשתם.</p>', ru_rope: '<p>גוררים אצבע על החבל כדי לחתוך אותו. הפרי נופל — מנחיתים אותו בקן. כוכבים באוויר: אוספים אותם בדרך. קוצים פוגעים בפרי.</p><p>הכוכבים בשלב שווים כוכבים בדירוג: בלי אף כוכב — כוכב אחד, עם שלושתם — שלושה.</p>', ru_td: '<p>בוחרים מגדל ומקישים על משבצת פנויה. מגדלים יורים בחרקים שהולכים בשביל לקן. כל חרק שמגיע לקן לוקח חיים.</p><p>מקישים על מגדל כדי לשדרג או למכור. שלושה שיקויים: הקפאה, ברק וניצן. בקרב: שולחים חרקים ליריב, מה שמגדיל את ההכנסה שלכם. מי שהקן שלו נפל — מפסיד.</p>',
+      album_d: 'אוספים מדבקות על הישגים. הקישו על מדבקה לראות איך משיגים אותה.', st_first_tetris: 'בונה ראשון', std_first_tetris: 'סיימו שלב ראשון בבונה הקן', st_first_screws: 'מברג', std_first_screws: 'סיימו שלב ראשון בבורגים וקרשים', st_first_rope: 'חותך חוט', std_first_rope: 'סיימו שלב ראשון בחוט ופרי', st_first_td: 'שומר הקן', std_first_td: 'סיימו שלב ראשון בשומרי הקן', st_stars10: '10 כוכבים', std_stars10: 'אספו 10 כוכבים', st_stars50: '50 כוכבים', std_stars50: 'אספו 50 כוכבים', st_stars150: '150 כוכבים', std_stars150: 'אספו 150 כוכבים', st_three: 'שלושה כוכבים', std_three: 'סיימו שלב עם 3 כוכבים', st_cpu: 'מנצח המחשב', std_cpu: 'נצחו את המחשב בקרב', st_two: 'שניים על טלפון', std_two: 'שחקו שניים על טלפון אחד', st_online: 'אונליין', std_online: 'שחקו אונליין עם חבר', st_daily1: 'אתגר ראשון', std_daily1: 'השלימו אתגר יומי', st_streak3: 'רצף 3', std_streak3: 'אתגר יומי 3 ימים ברצף', st_streak7: 'רצף שבוע', std_streak7: 'אתגר יומי 7 ימים ברצף',
+      g1t: 'ברוכים הבאים', g1: 'אוסף משחקי חשיבה: ענפים נופלים, ברגים, חבלים ומגדלים.', g2t: 'שלבים וכוכבים', g2: 'כל משחק מתחיל קל ומתקשה. אוספים כוכבים ופותחים שלבים חדשים.', g3t: 'אצבעות גדולות', g3: 'כל המטרות גדולות וסלחניות. לא צריך לדייק.', g4t: 'אתגר יומי ומדבקות', g4: 'כל יום אתגר חדש. רצף ימים והישגים מקבלים מדבקות באלבום.', g5t: 'עם חבר', g5: 'שניים על טלפון אחד, או אונליין עם קול וללא שרת. הכול עובד גם בלי אינטרנט, חוץ מהאונליין.', letsplay: 'יוצאים לדרך'
+    },
+    en: {
+      cont: 'Continue', daily: 'Daily challenge', daily_done: 'Done today ✓', streak_n: '{n}-day streak', rules: 'Rules', album: 'Album', stats: 'Stats', me: 'My player', pick_av: 'Pick an animal',
+      look: 'Look', th_gold: 'Gold', th_silver: 'Silver', th_emerald: 'Emerald', th_ruby: 'Ruby', th_ocean: 'Ocean', daymode: 'Day / night', night: 'Night', day: 'Day', gameplay: 'Gameplay',
+      backup: 'Backup & restore', backup_d: 'Everything stays on this phone. A backup file keeps settings, levels, stars and stickers.', export: 'Export', import: 'Restore', exported: 'Backup file saved', bad_file: 'That file does not fit', import_q: 'Restore the backup by {n} from {d}? This replaces current progress.',
+      guide: 'Guide', reset_all2: 'Erase everything', reset_q1: 'Erase all progress, settings and stickers?', reset_q2: 'Are you sure? This cannot be undone.', reset_yes: 'Yes, erase all',
+      a_ver: 'Version', a_dev: 'Developer', a_plat: 'Platform', a_store: 'Storage', a_local: 'On this device only', a_levels: 'Levels', a_lic: 'License', a_storeLink: 'AppNest store', a_share: 'Share the app', a_feedback: 'Send feedback', a_privacy: 'Privacy policy', install: 'Add to home screen', a_disc: 'Games inspired by classic styles. Names, characters and art are original and unrelated to other games. Online runs directly between phones, with no server and no account.', share_txt: 'ThinkNest — thinking & strategy games. {n} invites you to play:', copied: 'Link copied',
+      s_streak: 'Current streak', s_best: 'Best streak', s_dailies: 'Challenges', s_done: 'Levels', s_stars: 'Stars', s_three: '3 stars', s_wins: 'Wins', s_games: 'Games',
+      ru_stars: 'Stars', ru_tetris: '<p>Arrange falling twigs into full rows. Every full row disappears. In levels you must clear a number of rows before time runs out.</p><p>Drag to move, tap to rotate, swipe down fast to drop, and tap Hold to swap a piece. In duels, every row you clear sends junk to your rival.</p>', ru_screws: '<p>Take screws from the planks into the tray. A screw covered by a plank cannot be taken. Two screws of the same color in the tray join and vanish. A plank with no screws falls. Drop all the planks.</p><p>If the tray is full with no match you are stuck: undo a step or restart. Stars depend on how many helps (hint, undo, restart) you used.</p>', ru_rope: '<p>Swipe a finger across a rope to cut it. The berry falls — land it in the nest. Stars hang in the air: collect them on the way. Spikes hurt the berry.</p><p>Collected stars become rating stars: none gives one star, all three give three.</p>', ru_td: '<p>Pick a tower and tap an empty tile. Towers shoot the bugs walking the path to the nest. Every bug that reaches the nest costs a life.</p><p>Tap a tower to upgrade or sell it. Three potions: freeze, lightning and sprout. In duels you send bugs to your rival, which raises your income. Whoever loses the nest loses.</p>',
+      album_d: 'Collect stickers for achievements. Tap a sticker to see how to earn it.', st_first_tetris: 'First builder', std_first_tetris: 'Finish a level in Nest Builder', st_first_screws: 'Screwdriver', std_first_screws: 'Finish a level in Screws & Planks', st_first_rope: 'Rope cutter', std_first_rope: 'Finish a level in String & Berry', st_first_td: 'Nest guardian', std_first_td: 'Finish a level in Nest Guardians', st_stars10: '10 stars', std_stars10: 'Collect 10 stars', st_stars50: '50 stars', std_stars50: 'Collect 50 stars', st_stars150: '150 stars', std_stars150: 'Collect 150 stars', st_three: 'Three stars', std_three: 'Finish a level with 3 stars', st_cpu: 'Computer beaten', std_cpu: 'Beat the computer in a duel', st_two: 'Two on a phone', std_two: 'Play two on one phone', st_online: 'Online', std_online: 'Play online with a friend', st_daily1: 'First challenge', std_daily1: 'Complete a daily challenge', st_streak3: 'Streak 3', std_streak3: 'Daily challenge 3 days in a row', st_streak7: 'Week streak', std_streak7: 'Daily challenge 7 days in a row',
+      g1t: 'Welcome', g1: 'A collection of thinking games: falling twigs, screws, ropes and towers.', g2t: 'Levels and stars', g2: 'Every game starts easy and gets harder. Collect stars to unlock new levels.', g3t: 'Big fingers', g3: 'All targets are big and forgiving. No need to be precise.', g4t: 'Daily challenge & stickers', g4: 'A new challenge every day. Streaks and achievements earn stickers in your album.', g5t: 'With a friend', g5: 'Two on one phone, or online with voice and no server. Everything works offline, except online play.', letsplay: "Let's play"
+    },
+    ru: {
+      cont: 'Продолжить', daily: 'Задание дня', daily_done: 'Сегодня выполнено ✓', streak_n: 'Серия: {n} дн.', rules: 'Правила', album: 'Альбом', stats: 'Успехи', me: 'Мой игрок', pick_av: 'Выберите зверька',
+      look: 'Вид', th_gold: 'Золото', th_silver: 'Серебро', th_emerald: 'Изумруд', th_ruby: 'Рубин', th_ocean: 'Океан', daymode: 'День / ночь', night: 'Ночь', day: 'День', gameplay: 'Игра',
+      backup: 'Резервная копия', backup_d: 'Всё хранится только на этом телефоне. Файл копии сохраняет настройки, уровни, звёзды и наклейки.', export: 'Экспорт', import: 'Восстановить', exported: 'Файл копии сохранён', bad_file: 'Файл не подходит', import_q: 'Восстановить копию {n} от {d}? Текущий прогресс будет заменён.',
+      guide: 'Руководство', reset_all2: 'Стереть всё', reset_q1: 'Стереть весь прогресс, настройки и наклейки?', reset_q2: 'Точно? Отменить нельзя.', reset_yes: 'Да, стереть всё',
+      a_ver: 'Версия', a_dev: 'Разработчик', a_plat: 'Платформа', a_store: 'Хранение', a_local: 'Только на устройстве', a_levels: 'Уровни', a_lic: 'Лицензия', a_storeLink: 'Магазин AppNest', a_share: 'Поделиться приложением', a_feedback: 'Отправить отзыв', a_privacy: 'Политика конфиденциальности', install: 'На главный экран', a_disc: 'Игры вдохновлены классическими стилями. Названия, персонажи и графика оригинальные. Онлайн работает напрямую между телефонами, без сервера и аккаунта.', share_txt: 'ThinkNest — игры на мышление и стратегию. {n} приглашает играть:', copied: 'Ссылка скопирована',
+      s_streak: 'Текущая серия', s_best: 'Лучшая серия', s_dailies: 'Задания', s_done: 'Уровни', s_stars: 'Звёзды', s_three: '3 звезды', s_wins: 'Победы', s_games: 'Игры',
+      ru_stars: 'Звёзды', ru_tetris: '<p>Складывайте падающие ветки в полные ряды. Полный ряд исчезает. В уровнях нужно собрать несколько рядов до конца времени.</p><p>Тяните, чтобы двигать, касайтесь, чтобы повернуть, быстро проведите вниз, чтобы сбросить, «Запас» меняет фигуру. В дуэли каждый ряд отправляет мусор сопернику.</p>', ru_screws: '<p>Вынимайте винты из досок в лоток. Винт под доской вынуть нельзя. Два винта одного цвета в лотке соединяются и исчезают. Доска без винтов падает. Уроните все доски.</p><p>Если лоток полон и нет пары — тупик: отмените шаг или начните заново. Звёзды зависят от числа подсказок, отмен и перезапусков.</p>', ru_rope: '<p>Проведите пальцем по верёвке, чтобы перерезать. Ягода падает — опустите её в гнездо. Звёзды висят в воздухе: собирайте. Шипы вредят ягоде.</p><p>Собранные звёзды — это оценка: ни одной — одна звезда, все три — три.</p>', ru_td: '<p>Выберите башню и коснитесь пустой клетки. Башни стреляют по жукам, идущим к гнезду. Каждый жук, дошедший до гнезда, отнимает жизнь.</p><p>Коснитесь башни, чтобы улучшить или продать. Три зелья: заморозка, молния и росток. В дуэли вы посылаете жуков сопернику и растёт ваш доход. Кто потерял гнездо — проиграл.</p>',
+      album_d: 'Собирайте наклейки за достижения. Нажмите на наклейку, чтобы увидеть условие.', st_first_tetris: 'Первый строитель', std_first_tetris: 'Пройдите уровень в «Строителе гнезда»', st_first_screws: 'Отвёрточник', std_first_screws: 'Пройдите уровень в «Винтах и досках»', st_first_rope: 'Режущий верёвки', std_first_rope: 'Пройдите уровень в «Нити и ягоде»', st_first_td: 'Страж гнезда', std_first_td: 'Пройдите уровень в «Стражах гнезда»', st_stars10: '10 звёзд', std_stars10: 'Соберите 10 звёзд', st_stars50: '50 звёзд', std_stars50: 'Соберите 50 звёзд', st_stars150: '150 звёзд', std_stars150: 'Соберите 150 звёзд', st_three: 'Три звезды', std_three: 'Пройдите уровень на 3 звезды', st_cpu: 'Компьютер побеждён', std_cpu: 'Победите компьютер в дуэли', st_two: 'Двое на телефоне', std_two: 'Сыграйте вдвоём на одном телефоне', st_online: 'Онлайн', std_online: 'Сыграйте онлайн с другом', st_daily1: 'Первое задание', std_daily1: 'Выполните задание дня', st_streak3: 'Серия 3', std_streak3: 'Задание дня 3 дня подряд', st_streak7: 'Серия неделя', std_streak7: 'Задание дня 7 дней подряд',
+      g1t: 'Добро пожаловать', g1: 'Сборник игр на мышление: падающие ветки, винты, верёвки и башни.', g2t: 'Уровни и звёзды', g2: 'Каждая игра начинается легко и усложняется. Собирайте звёзды и открывайте уровни.', g3t: 'Большие пальцы', g3: 'Все цели большие и прощающие. Точность не нужна.', g4t: 'Задание дня и наклейки', g4: 'Каждый день новое задание. Серии и достижения дают наклейки в альбоме.', g5t: 'С другом', g5: 'Вдвоём на одном телефоне или онлайн с голосом и без сервера. Всё работает без интернета, кроме онлайна.', letsplay: 'Играем'
+    },
+    es: {
+      cont: 'Continuar', daily: 'Reto diario', daily_done: 'Hecho hoy ✓', streak_n: 'Racha de {n} días', rules: 'Reglas', album: 'Álbum', stats: 'Logros', me: 'Mi jugador', pick_av: 'Elige un animal',
+      look: 'Aspecto', th_gold: 'Oro', th_silver: 'Plata', th_emerald: 'Esmeralda', th_ruby: 'Rubí', th_ocean: 'Océano', daymode: 'Día / noche', night: 'Noche', day: 'Día', gameplay: 'Juego',
+      backup: 'Copia y restauración', backup_d: 'Todo se queda en este teléfono. El archivo guarda ajustes, niveles, estrellas y pegatinas.', export: 'Exportar', import: 'Restaurar', exported: 'Copia guardada', bad_file: 'Ese archivo no sirve', import_q: '¿Restaurar la copia de {n} del {d}? Reemplaza el progreso actual.',
+      guide: 'Guía', reset_all2: 'Borrar todo', reset_q1: '¿Borrar todo el progreso, ajustes y pegatinas?', reset_q2: '¿Seguro? No se puede deshacer.', reset_yes: 'Sí, borrar todo',
+      a_ver: 'Versión', a_dev: 'Desarrollo', a_plat: 'Plataforma', a_store: 'Almacenamiento', a_local: 'Solo en el dispositivo', a_levels: 'Niveles', a_lic: 'Licencia', a_storeLink: 'Tienda AppNest', a_share: 'Compartir la app', a_feedback: 'Enviar comentarios', a_privacy: 'Política de privacidad', install: 'Añadir a inicio', a_disc: 'Juegos inspirados en estilos clásicos. Nombres, personajes y arte son originales y ajenos a otros juegos. El modo en línea va directo entre teléfonos, sin servidor ni cuenta.', share_txt: 'ThinkNest — juegos de ingenio y estrategia. {n} te invita a jugar:', copied: 'Enlace copiado',
+      s_streak: 'Racha actual', s_best: 'Mejor racha', s_dailies: 'Retos', s_done: 'Niveles', s_stars: 'Estrellas', s_three: '3 estrellas', s_wins: 'Victorias', s_games: 'Partidas',
+      ru_stars: 'Estrellas', ru_tetris: '<p>Ordena las ramas que caen en filas completas. Cada fila completa desaparece. En los niveles debes completar cierto número de filas antes de que se acabe el tiempo.</p><p>Arrastra para mover, toca para girar, desliza rápido hacia abajo para soltar y toca Guardar para cambiar la pieza. En duelo, cada fila que limpias envía basura al rival.</p>', ru_screws: '<p>Saca los tornillos de los tablones a la bandeja. Un tornillo tapado por un tablón no se puede sacar. Dos tornillos del mismo color en la bandeja se unen y desaparecen. Un tablón sin tornillos cae. Tira todos los tablones.</p><p>Si la bandeja está llena y no hay pareja, estás atascado: deshaz un paso o reinicia. Las estrellas dependen de cuántas ayudas usaste.</p>', ru_rope: '<p>Desliza el dedo sobre una cuerda para cortarla. La baya cae: llévala al nido. Las estrellas flotan: recógelas. Los pinchos dañan la baya.</p><p>Las estrellas recogidas son tu nota: ninguna da una estrella, las tres dan tres.</p>', ru_td: '<p>Elige una torre y toca una casilla libre. Las torres disparan a los bichos que van por el camino hacia el nido. Cada bicho que llega al nido quita una vida.</p><p>Toca una torre para mejorarla o venderla. Tres pociones: hielo, rayo y brote. En duelo envías bichos al rival y sube tu ingreso. Quien pierde el nido, pierde.</p>',
+      album_d: 'Reúne pegatinas por tus logros. Toca una pegatina para ver cómo conseguirla.', st_first_tetris: 'Primer constructor', std_first_tetris: 'Supera un nivel en Constructor del nido', st_first_screws: 'Atornillador', std_first_screws: 'Supera un nivel en Tornillos y tablones', st_first_rope: 'Corta cuerdas', std_first_rope: 'Supera un nivel en Hilo y baya', st_first_td: 'Guardián del nido', std_first_td: 'Supera un nivel en Guardianes del nido', st_stars10: '10 estrellas', std_stars10: 'Reúne 10 estrellas', st_stars50: '50 estrellas', std_stars50: 'Reúne 50 estrellas', st_stars150: '150 estrellas', std_stars150: 'Reúne 150 estrellas', st_three: 'Tres estrellas', std_three: 'Supera un nivel con 3 estrellas', st_cpu: 'Móvil vencido', std_cpu: 'Vence al móvil en un duelo', st_two: 'Dos en un móvil', std_two: 'Juega dos en un teléfono', st_online: 'En línea', std_online: 'Juega en línea con un amigo', st_daily1: 'Primer reto', std_daily1: 'Completa un reto diario', st_streak3: 'Racha 3', std_streak3: 'Reto diario 3 días seguidos', st_streak7: 'Racha semanal', std_streak7: 'Reto diario 7 días seguidos',
+      g1t: 'Bienvenido', g1: 'Una colección de juegos de ingenio: ramas que caen, tornillos, cuerdas y torres.', g2t: 'Niveles y estrellas', g2: 'Cada juego empieza fácil y se complica. Reúne estrellas para abrir niveles.', g3t: 'Dedos grandes', g3: 'Todos los objetivos son grandes y tolerantes. No hace falta precisión.', g4t: 'Reto diario y pegatinas', g4: 'Cada día un reto nuevo. Las rachas y logros dan pegatinas en tu álbum.', g5t: 'Con un amigo', g5: 'Dos en un teléfono, o en línea con voz y sin servidor. Todo funciona sin internet, salvo el modo en línea.', letsplay: 'A jugar'
+    },
+    ar: {
+      cont: 'متابعة', daily: 'التحدي اليومي', daily_done: 'تم اليوم ✓', streak_n: 'سلسلة {n} أيام', rules: 'القواعد', album: 'الألبوم', stats: 'الإنجازات', me: 'لاعبي', pick_av: 'اختر حيواناً',
+      look: 'المظهر', th_gold: 'ذهبي', th_silver: 'فضي', th_emerald: 'زمردي', th_ruby: 'ياقوتي', th_ocean: 'محيطي', daymode: 'نهار / ليل', night: 'ليل', day: 'نهار', gameplay: 'اللعب',
+      backup: 'نسخ احتياطي واستعادة', backup_d: 'كل شيء يبقى على هذا الهاتف فقط. ملف النسخة يحفظ الإعدادات والمراحل والنجوم والملصقات.', export: 'تصدير', import: 'استعادة', exported: 'تم حفظ النسخة', bad_file: 'الملف غير مناسب', import_q: 'استعادة نسخة {n} بتاريخ {d}؟ سيستبدل التقدم الحالي.',
+      guide: 'الدليل', reset_all2: 'حذف كل شيء', reset_q1: 'حذف كل التقدم والإعدادات والملصقات؟', reset_q2: 'هل أنت متأكد؟ لا يمكن التراجع.', reset_yes: 'نعم، احذف كل شيء',
+      a_ver: 'الإصدار', a_dev: 'التطوير', a_plat: 'المنصة', a_store: 'التخزين', a_local: 'على الجهاز فقط', a_levels: 'المراحل', a_lic: 'الترخيص', a_storeLink: 'متجر AppNest', a_share: 'شارك التطبيق', a_feedback: 'أرسل ملاحظاتك', a_privacy: 'سياسة الخصوصية', install: 'إضافة إلى الشاشة', a_disc: 'ألعاب مستوحاة من أنماط كلاسيكية. الأسماء والشخصيات والرسومات أصلية ولا علاقة لها بألعاب أخرى. اللعب عبر الإنترنت مباشر بين الهواتف بلا خادم وبلا حساب.', share_txt: 'ThinkNest — ألعاب تفكير واستراتيجية. {n} يدعوك للعب:', copied: 'تم نسخ الرابط',
+      s_streak: 'السلسلة الحالية', s_best: 'أفضل سلسلة', s_dailies: 'التحديات', s_done: 'المراحل', s_stars: 'النجوم', s_three: '3 نجوم', s_wins: 'الفوز', s_games: 'المباريات',
+      ru_stars: 'النجوم', ru_tetris: '<p>رتّب الأغصان الساقطة في صفوف كاملة. كل صف كامل يختفي. في المراحل عليك إكمال عدد من الصفوف قبل انتهاء الوقت.</p><p>اسحب للتحريك، انقر للتدوير، اسحب بسرعة للأسفل للإسقاط، وانقر «احتفظ» لتبديل القطعة. في المبارزة كل صف تمسحه يرسل أحجاراً إلى خصمك.</p>', ru_screws: '<p>أخرج المسامير من الألواح إلى الصينية. لا يمكن إخراج مسمار يغطيه لوح. مساران بنفس اللون في الصينية يلتصقان ويختفيان. اللوح بلا مسامير يسقط. أسقط كل الألواح.</p><p>إن امتلأت الصينية بلا تطابق فقد علقت: تراجع خطوة أو ابدأ من جديد. النجوم حسب عدد المساعدات المستخدمة.</p>', ru_rope: '<p>اسحب إصبعك على الحبل لقطعه. تسقط التوتة — أنزلها في العش. النجوم معلقة في الهواء: اجمعها. الأشواك تؤذي التوتة.</p><p>النجوم التي جمعتها هي تقييمك: بلا نجوم تنال نجمة، وبالثلاث تنال ثلاثاً.</p>', ru_td: '<p>اختر برجاً وانقر على مربع فارغ. تطلق الأبراج على الحشرات السائرة نحو العش. كل حشرة تصل العش تأخذ حياة.</p><p>انقر على برج لتطويره أو بيعه. ثلاث جرعات: تجميد وبرق وبرعم. في المبارزة ترسل حشرات إلى خصمك فيزيد دخلك. من يخسر عشه يخسر.</p>',
+      album_d: 'اجمع ملصقات مقابل الإنجازات. انقر على ملصق لمعرفة كيف تحصل عليه.', st_first_tetris: 'أول بنّاء', std_first_tetris: 'أنهِ مرحلة في بنّاء العش', st_first_screws: 'فكّاك المسامير', std_first_screws: 'أنهِ مرحلة في براغي وألواح', st_first_rope: 'قاطع الحبال', std_first_rope: 'أنهِ مرحلة في خيط وتوتة', st_first_td: 'حارس العش', std_first_td: 'أنهِ مرحلة في حراس العش', st_stars10: '10 نجوم', std_stars10: 'اجمع 10 نجوم', st_stars50: '50 نجمة', std_stars50: 'اجمع 50 نجمة', st_stars150: '150 نجمة', std_stars150: 'اجمع 150 نجمة', st_three: 'ثلاث نجوم', std_three: 'أنهِ مرحلة بثلاث نجوم', st_cpu: 'هزمت الحاسوب', std_cpu: 'اهزم الحاسوب في مبارزة', st_two: 'اثنان على هاتف', std_two: 'العب اثنان على هاتف واحد', st_online: 'أونلاين', std_online: 'العب أونلاين مع صديق', st_daily1: 'أول تحدٍّ', std_daily1: 'أكمل تحدياً يومياً', st_streak3: 'سلسلة 3', std_streak3: 'تحدٍّ يومي 3 أيام متتالية', st_streak7: 'سلسلة أسبوع', std_streak7: 'تحدٍّ يومي 7 أيام متتالية',
+      g1t: 'أهلاً بك', g1: 'مجموعة ألعاب تفكير: أغصان تسقط ومسامير وحبال وأبراج.', g2t: 'مراحل ونجوم', g2: 'كل لعبة تبدأ سهلة وتصعب تدريجياً. اجمع النجوم لفتح مراحل جديدة.', g3t: 'أصابع كبيرة', g3: 'كل الأهداف كبيرة ومتسامحة. لا حاجة للدقة.', g4t: 'تحدٍّ يومي وملصقات', g4: 'تحدٍّ جديد كل يوم. السلاسل والإنجازات تمنحك ملصقات في الألبوم.', g5t: 'مع صديق', g5: 'اثنان على هاتف واحد، أو أونلاين بالصوت وبلا خادم. كل شيء يعمل بلا إنترنت عدا اللعب أونلاين.', letsplay: 'هيا نلعب'
+    }
+  };
+  for (const l in A) { Object.assign(LANG[l], A[l]); }
+  LANG.ids = ST;
+})();
+
 /* ===== src/app.js ===== */
 'use strict';
 /* ThinkNest — מעטפת: שפות, אחסון, ניווט, מסכים, אונליין (NestLink). המשחקים נרשמים ב-Games. */
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const store = {
@@ -1117,9 +1222,10 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { toast('⚠ שמירה נכשלה'); return false; } }
 };
 const AVATARS = ['🦉', '🦔', '🦊', '🐧', '🐯', '🐨', '🐙', '🦜'];
-const THEMES = ['black', 'night', 'forest', 'sunset', 'light'];
+const THEMES = ['gold', 'silver', 'emerald', 'ruby', 'ocean'];
 const defLang = () => { const l = (navigator.language || 'he').slice(0, 2); return LANG[l] ? l : 'he'; };
-const S = Object.assign({ lang: store.get('tn_lang_default', null) || 'he', theme: 'black', sound: true, vib: true, name: '', av: AVATARS[0], guide: false }, store.get('tn_set', {}));
+const S = Object.assign({ lang: store.get('tn_lang_default', null) || 'he', theme: 'gold', mode: 'night', sound: true, vib: true, name: '', av: AVATARS[0], guide: false }, store.get('tn_set', {}));
+if (THEMES.indexOf(S.theme) < 0) S.theme = 'gold'; if (!S.mode) S.mode = 'night';
 const saveS = () => store.set('tn_set', S);
 const P = store.get('tn_prog', {});            // התקדמות: P[game] = {lv:{n:stars}, games, wins}
 const saveP = () => store.set('tn_prog', P);
@@ -1131,7 +1237,7 @@ function T(k, o) {
 }
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function applyLang() { const d = LANG[S.lang].dir; document.documentElement.lang = S.lang; document.documentElement.dir = d; document.title = 'ThinkNest · ' + T('app_sub'); }
-function applyTheme() { document.documentElement.dataset.theme = S.theme; const m = $('meta[name=theme-color]'); if (m) m.content = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0b0b0d'; }
+function applyTheme() { document.documentElement.dataset.theme = S.theme; document.documentElement.dataset.mode = S.mode; const m = $('meta[name=theme-color]'); if (m) m.content = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0b0b0d'; }
 const nameOr = () => S.name || T('you');
 
 /* ---------- צלילים (מסונתזים) ---------- */
@@ -1224,7 +1330,8 @@ RENDER.home = () => {
   $('[data-act=theme]', el).onclick = () => { S.theme = THEMES[(THEMES.indexOf(S.theme) + 1) % THEMES.length]; saveS(); applyTheme(); };
 };
 function openGame(g) { curGame = g; show('gmenu'); render('gmenu'); }
-function backBar(title) { return `<div class="top"><button class="back" data-back>${LANG[S.lang].dir === 'rtl' ? '→' : '←'} ${T('back')}</button><h1>${title || ''}</h1></div>`; }
+function backName() { const p = stack[stack.length - 1] || 'home'; return { home: T('home'), gmenu: curGame ? T('g_' + curGame) : T('home'), map: T('m_solo'), lobby: T('m_online'), settings: T('settings'), about: T('about'), rules: T('rules'), stats: T('stats'), album: T('album') }[p] || T('back'); }
+function backBar(title) { return `<div class="top"><button class="back" data-back>${LANG[S.lang].dir === 'rtl' ? '→' : '←'} ${esc(backName())}</button><h1>${title || ''}</h1></div>`; }
 function wireBack(el) { const b = $('[data-back]', el); if (b) b.onclick = () => { SFX.tap(); goBack(); }; }
 RENDER.gmenu = () => {
   const g = Games[curGame], el = $('#gmenu'), st = pg(curGame);
@@ -1284,7 +1391,7 @@ function showGuide() {
   };
   guideEl = document.createElement('div'); guideEl.className = 'ov'; guideEl.dataset.nobk = 1; document.body.appendChild(guideEl); overlays.push(guideEl); draw();
 }
-function endGuide() { S.guide = true; saveS(); closeOv(guideEl); guideEl = null; }
+function endGuide() { S.guide = true; saveS(); const g = guideEl; guideEl = null; closeOv(g); }
 
 /* ---------- אונליין: NestLink ---------- */
 const Net = {
@@ -1564,7 +1671,7 @@ window.__tn = { get run() { return activeRun; }, get sc() { return curSc; }, get
         if (res === 'win') { stars = t <= lv.t3 ? 3 : t <= lv.t2 ? 2 : 1; title = T('done'); }
         else why = res === 'timeup' ? T('time_up') : T('topout');
         if (res === 'win' && stars > (st.lv[lv.n] || 0)) { st.lv[lv.n] = stars; }
-        st.games++; if (res === 'win') st.wins++; saveP();
+        st.games++; if (res === 'win') st.wins++; saveP(); Meta.after('tetris', 'solo', res === 'win', lv.n);
         res === 'win' ? SFX.win() : SFX.lose();
         html = `<h3>${title}</h3>${stars ? `<div class="big-st">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</div>` : ''}<p>${why ? why + ' · ' : ''}${T('t_time')} ${fmt(t)} · ${T('t_lines')} ${this.pl[0].s.lines}/${lv.lines}</p>`;
         if (res === 'win' && lv.n < LEVELS.length) btns += `<button class="btn pri" data-e="next">${T('next_level')}</button>`;
@@ -1574,7 +1681,7 @@ window.__tn = { get run() { return activeRun; }, get sc() { return curSc; }, get
         if (res === 'draw') { title = T('draw'); }
         else if (m === 'two') { title = T('p_wins', { n: this.pl[res].name }); }
         else if (res === 'win') { title = T('win'); sub = this.net ? T('on_opp_over') : ''; } else { title = T('lose'); sub = this.net ? T('on_you_over') : ''; }
-        st.games++; if (res === 'win') st.wins++; saveP();
+        st.games++; if (res === 'win') st.wins++; saveP(); Meta.after('tetris', m, res === 'win');
         (res === 'win' || m === 'two') ? SFX.win() : SFX.lose();
         html = `<h3>${title}</h3><p>${sub}</p><p>${this.pl.map(p => p.av + ' ' + esc(p.name) + ': ' + p.s.lines + ' ' + T('t_lines')).join(' · ')}</p>`;
         btns = `<button class="btn pri" data-e="again">${T('rematch')}</button><button class="btn" data-e="quit">${T('home')}</button>`;
@@ -1812,14 +1919,14 @@ window.__tn = { get run() { return activeRun; }, get sc() { return curSc; }, get
       const m = this.mode, st = pg('screws'); let html = '', btns = '';
       if (m === 'solo') {
         const stars = this.uses === 0 ? 3 : this.uses <= 2 ? 2 : 1;
-        if (stars > (st.lv[this.lv.n] || 0)) st.lv[this.lv.n] = stars; st.games++; st.wins++; saveP(); SFX.win();
+        if (stars > (st.lv[this.lv.n] || 0)) st.lv[this.lv.n] = stars; st.games++; st.wins++; saveP(); Meta.after('screws', 'solo', true, this.lv.n); SFX.win();
         html = `<h3>${T('done')}</h3><div class="big-st">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</div><p>${T('s_uses', { n: this.uses })}</p>`;
         if (this.lv.n < LV.length) btns += `<button class="btn pri" data-e="next">${T('next_level')}</button>`;
         btns += `<button class="btn" data-e="again">${T('retry')}</button><button class="btn" data-e="quit">${T('m_solo')}</button>`;
       } else {
         let title;
-        if (m === 'two') { const a = this.score[0], b = this.score[1]; title = a === b ? T('draw') : T('p_wins', { n: T(a > b ? 'p1' : 'p2') }); SFX.win(); html = `<h3>${title}</h3><p>${T('p1')}: ${a} · ${T('p2')}: ${b}</p>`; }
-        else { if (res === 'win') { if (this.net) Net.link.send({ type: 'over' }); title = T('win'); SFX.win(); } else { title = T('lose'); SFX.lose(); } st.games++; if (res === 'win') st.wins++; saveP(); html = `<h3>${title}</h3><p>${res === 'win' ? T('on_opp_over') : T('on_you_over')}</p>`; }
+        if (m === 'two') { const a = this.score[0], b = this.score[1]; Meta.after('screws', 'two', true); title = a === b ? T('draw') : T('p_wins', { n: T(a > b ? 'p1' : 'p2') }); SFX.win(); html = `<h3>${title}</h3><p>${T('p1')}: ${a} · ${T('p2')}: ${b}</p>`; }
+        else { if (res === 'win') { if (this.net) Net.link.send({ type: 'over' }); title = T('win'); SFX.win(); } else { title = T('lose'); SFX.lose(); } st.games++; if (res === 'win') st.wins++; saveP(); Meta.after('screws', 'online', res === 'win'); html = `<h3>${title}</h3><p>${res === 'win' ? T('on_opp_over') : T('on_you_over')}</p>`; }
         btns = `<button class="btn pri" data-e="again">${T('rematch')}</button><button class="btn" data-e="quit">${T('home')}</button>`;
       }
       setTimeout(() => { const o = openOv(html + btns); o.dataset.nobk = 1; $$('[data-e]', o).forEach(b => b.onclick = () => { closeOv(o); this.endAct(b.dataset.e); }); }, 450);
@@ -1975,7 +2082,7 @@ window.__tn = { get run() { return activeRun; }, get sc() { return curSc; }, get
     finish(res) {
       if (this.state === 'end') return; this.state = 'end'; const st = pg('rope'); let html, btns = '';
       if (res === 'win') {
-        const stars = Math.max(1, this.w.gotN); if (stars > (st.lv[this.lv.n] || 0)) st.lv[this.lv.n] = stars; st.games++; st.wins++; saveP(); SFX.win();
+        const stars = Math.max(1, this.w.gotN); if (stars > (st.lv[this.lv.n] || 0)) st.lv[this.lv.n] = stars; st.games++; st.wins++; saveP(); Meta.after('rope', 'solo', true, this.lv.n); SFX.win();
         html = `<h3>${T('done')}</h3><div class="big-st">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</div>`;
         if (this.lv.n < LV.length) btns += `<button class="btn pri" data-e="next">${T('next_level')}</button>`;
         btns += `<button class="btn" data-e="again">${T('retry')}</button>`;
@@ -2203,13 +2310,13 @@ window.__tn = { get run() { return activeRun; }, get sc() { return curSc; }, get
       if (this.state === 'end') return; this.state = 'end'; const st = pg('td'); let html, btns = '';
       if (this.mode === 'solo') {
         const w = this.sides[0].w, lost = w.leaked; let stars = 0;
-        if (res === 'win') { stars = lost === 0 ? 3 : lost <= 3 ? 2 : 1; if (stars > (st.lv[this.cfg.lv.n] || 0)) st.lv[this.cfg.lv.n] = stars; st.wins++; SFX.win(); } else SFX.lose(); st.games++; saveP();
+        if (res === 'win') { stars = lost === 0 ? 3 : lost <= 3 ? 2 : 1; if (stars > (st.lv[this.cfg.lv.n] || 0)) st.lv[this.cfg.lv.n] = stars; st.wins++; SFX.win(); } else SFX.lose(); st.games++; saveP(); if (res === 'win') Meta.after('td', 'solo', true, this.cfg.lv.n);
         html = `<h3>${res === 'win' ? T('done') : T('failed')}</h3>${stars ? `<div class="big-st">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</div>` : ''}<p>❤ ${Math.max(0, w.lives)}/${w.maxLives}</p>`;
         if (res === 'win' && this.cfg.lv.n < 36) btns += `<button class="btn pri" data-e="next">${T('next_level')}</button>`;
         btns += `<button class="btn ${res === 'win' ? '' : 'pri'}" data-e="again">${T('retry')}</button><button class="btn" data-e="quit">${T('m_solo')}</button>`;
       } else {
         let title; if (res === 'draw') title = T('draw'); else if (this.mode === 'two') title = T('p_wins', { n: T(res ? 'p2' : 'p1') }); else title = res === 'win' ? T('win') : T('lose');
-        if (this.mode !== 'two') { st.games++; if (res === 'win') st.wins++; saveP(); } (res === 'win' || this.mode === 'two') ? SFX.win() : SFX.lose();
+        if (this.mode !== 'two') { st.games++; if (res === 'win') st.wins++; saveP(); } Meta.after('td', this.mode, res === 'win'); (res === 'win' || this.mode === 'two') ? SFX.win() : SFX.lose();
         html = `<h3>${title}</h3>`; btns = `<button class="btn pri" data-e="again">${T('rematch')}</button><button class="btn" data-e="quit">${T('home')}</button>`;
       }
       setTimeout(() => { const o = openOv(html + btns); o.dataset.nobk = 1; $$('[data-e]', o).forEach(b => b.onclick = () => { closeOv(o); this.endAct(b.dataset.e); }); }, 500);
@@ -2260,6 +2367,157 @@ window.__tn = { get run() { return activeRun; }, get sc() { return curSc; }, get
   };
   function closeAllOv() { while (overlays.length) { const o = overlays[overlays.length - 1]; if (o === guideEl) break; closeOv(o); } }
 })();
+
+/* ===== src/shell2.js ===== */
+'use strict';
+/* ThinkNest — מעטפת AppNest מלאה: בית, אתגר יומי, מדבקות, חוקים, הישגים, הגדרות, גיבוי, אודות, מדריך. */
+const GAME_IDS = ['tetris', 'screws', 'rope', 'td'], GICON = { tetris: '🧱', screws: '🔩', rope: '🍓', td: '🐞' };
+const STICKERS = [['first_tetris', '🧱'], ['first_screws', '🔩'], ['first_rope', '🍓'], ['first_td', '🐞'], ['stars10', '⭐'], ['stars50', '🌟'], ['stars150', '🏆'], ['three', '✨'], ['cpu', '🤖'], ['two', '👥'], ['online', '🌐'], ['daily1', '📅'], ['streak3', '🔥'], ['streak7', '☄️']];
+const META = Object.assign({ daily: { done: {}, last: '', streak: 0, best: 0 }, stk: {}, cnt: {}, last: null }, store.get('tn_meta', {}));
+const saveMeta = () => store.set('tn_meta', META);
+const dayKey = (d) => { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const dayNo = (k) => { const p = (k || dayKey()).split('-').map(Number); return Math.floor(Date.UTC(p[0], p[1] - 1, p[2]) / 864e5); };
+const NLEV = g => Games[g] && Games[g].levels ? Games[g].levels.length : 0;
+const gTitle = g => T('g_' + g);
+const starsOf = g => Object.values(pg(g).lv).reduce((a, b) => a + b, 0);
+const doneOf = g => Object.values(pg(g).lv).filter(x => x >= 1).length;
+const totalStars = () => GAME_IDS.reduce((a, g) => a + starsOf(g), 0);
+function dailyTarget(k) {
+  const n = dayNo(k), ready = GAME_IDS.filter(g => Games[g] && Games[g].ready), g = ready[n % ready.length], N = NLEV(g);
+  const lo = Math.floor(N * 0.12), hi = Math.floor(N * 0.5); const h = ((n * 2654435761) >>> 0) % Math.max(1, hi - lo);
+  return { g, n: lo + h + 1, date: k || dayKey() };
+}
+const Meta = {
+  after(g, mode, win, n) {
+    const c = META.cnt; c[mode] = (c[mode] || 0) + 1; if (win) c[mode + '_w'] = (c[mode + '_w'] || 0) + 1;
+    const dt = dailyTarget(); let fresh = [];
+    if (win && mode === 'solo' && dt.g === g && dt.n === n && !META.daily.done[dt.date]) {
+      META.daily.done[dt.date] = 1; const y = dayKey(new Date(Date.now() - 864e5));
+      META.daily.streak = META.daily.last === y ? META.daily.streak + 1 : 1; META.daily.last = dt.date; META.daily.best = Math.max(META.daily.best, META.daily.streak); fresh.push('daily');
+    }
+    META.last = META.last || {}; if (mode === 'solo') META.last = { g, n };
+    const got = [], add = id => { if (!META.stk[id]) { META.stk[id] = Date.now(); got.push(id); } };
+    const stars = totalStars();
+    GAME_IDS.forEach(x => { if (doneOf(x) > 0) add('first_' + x); });
+    if (stars >= 10) add('stars10'); if (stars >= 50) add('stars50'); if (stars >= 150) add('stars150');
+    if (GAME_IDS.some(x => Object.values(pg(x).lv).some(s => s >= 3))) add('three');
+    if ((c.cpu_w || 0) > 0) add('cpu'); if ((c.two || 0) > 0) add('two'); if ((c.online || 0) > 0) add('online');
+    if (META.daily.last && Object.keys(META.daily.done).length) add('daily1'); if (META.daily.streak >= 3) add('streak3'); if (META.daily.streak >= 7) add('streak7');
+    saveMeta();
+    if (fresh.length) setTimeout(() => toast('📅 ' + T('daily_done'), 2400), 1500);
+    if (got.length) setTimeout(() => toast('🏅 ' + got.map(id => T('st_' + id)).join(' · '), 3200), fresh.length ? 4200 : 1600);
+  }
+};
+/* ---------- בית ---------- */
+function nextLevelOf(g) { const L = pg(g).lv, N = NLEV(g); for (let i = 1; i <= N; i++) if (!L[i]) return i; return 0; }
+RENDER.home = () => {
+  const el = $('#home'), dt = dailyTarget(), done = !!META.daily.done[dt.date], last = META.last && META.last.g, nl = last ? nextLevelOf(last) : 0;
+  const streak = META.daily.last && dayNo() - dayNo(META.daily.last) <= 1 ? META.daily.streak : 0;
+  const wk = []; for (let i = 6; i >= 0; i--) { const d = new Date(Date.now() - i * 864e5), k = dayKey(d); wk.push(`<i class="${META.daily.done[k] ? 'on' : ''} ${i === 0 ? 'today' : ''}">${['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'][d.getDay()] && S.lang === 'he' ? ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'][d.getDay()] : ['S', 'M', 'T', 'W', 'T', 'F', 'S'][d.getDay()]}</i>`); }
+  el.innerHTML = `<div class="hero">
+    <div class="toprow"><button class="me" data-act="me"><span class="av">${S.av}</span><span>${esc(nameOr())}</span></button>
+    <div class="quick"><button data-act="theme" aria-label="${T('theme')}">🎨</button><button data-act="mode" aria-label="${T('daymode')}">${S.mode === 'day' ? '☀️' : '🌙'}</button><button data-act="about" aria-label="${T('about')}">ℹ️</button></div></div>
+    <div class="wordmark">Think<i>Nest</i></div><div class="sub">${T('app_sub')}</div>
+    <div class="floaty" aria-hidden="true"><span>🧱</span><span>🔩</span><span>🍓</span><span>🐞</span><span>🪺</span></div></div>
+  ${nl ? `<button class="resume" data-act="resume"><span style="font-size:28px">${GICON[last]}</span><span style="flex:1">${T('cont')}: ${esc(gTitle(last))} · ${T('s_level')} ${nl}</span><span>▶</span></button>` : ''}
+  <button class="dailyb ${done ? 'done' : ''}" data-act="daily"><span class="ic">${done ? '✅' : '📅'}</span><span style="flex:1"><b>${T('daily')}</b><small>${esc(gTitle(dt.g))} · ${T('s_level')} ${dt.n}${streak ? ' · 🔥 ' + T('streak_n', { n: streak }) : ''}</small></span></button>
+  <div class="week">${wk.join('')}</div>
+  <div class="tiles">${Object.keys(Games).filter(g => Games[g].ready).map(g => `<div class="tile" data-g="${g}"><div class="art">${artImg('tile-' + g) || Games[g].art()}</div><b>${T('g_' + g)}</b><small>${T('d_' + g)}</small></div>`).join('')}</div>
+  <div class="tools"><button data-act="rules"><i>📖</i><span>${T('rules')}</span></button><button data-act="album"><i>🃏</i><span>${T('album')}</span></button><button data-act="stats"><i>🏅</i><span>${T('stats')}</span></button><button data-act="settings"><i>⚙️</i><span>${T('settings')}</span></button></div>
+  <div class="badge">AppNest · <b>ThinkNest</b> · v${APP_VERSION}</div>`;
+  $$('[data-g]', el).forEach(t => t.onclick = () => { SFX.tap(); openGame(t.dataset.g); });
+  const A = (a, f) => { const b = $('[data-act=' + a + ']', el); if (b) b.onclick = () => { SFX.tap(); f(); }; };
+  A('me', playersBox); A('theme', () => { S.theme = THEMES[(THEMES.indexOf(S.theme) + 1) % THEMES.length]; saveS(); applyTheme(); toast(T('theme') + ': ' + T('th_' + S.theme), 1200); });
+  A('mode', () => { S.mode = S.mode === 'day' ? 'night' : 'day'; saveS(); applyTheme(); render('home'); });
+  A('about', () => { show('about'); render('about'); }); A('settings', () => { show('settings'); render('settings'); });
+  A('rules', () => { show('rules'); render('rules'); }); A('album', () => { show('album'); render('album'); }); A('stats', () => { show('stats'); render('stats'); });
+  A('resume', () => { curGame = last; Games[last].startSolo(nl); });
+  A('daily', () => { curGame = dt.g; Games[dt.g].startSolo(dt.n); });
+};
+function playersBox() {
+  const o = openOv(`<h3>${T('me')}</h3><div class="lbl" style="margin-top:0;text-align:start">${T('name')}</div><input class="txt" id="pbName" maxlength="14" value="${esc(S.name)}" placeholder="${T('you')}"><div class="lbl" style="text-align:start">${T('pick_av')}</div><div class="avs" id="pbAv" style="justify-content:center">${AVATARS.map(a => `<button data-a="${a}" class="${S.av === a ? 'on' : ''}">${a}</button>`).join('')}</div><button class="btn pri" data-x>${T('ok')}</button>`);
+  $('#pbName', o).oninput = e => { S.name = e.target.value.slice(0, 14); saveS(); };
+  $$('#pbAv button', o).forEach(b => b.onclick = () => { S.av = b.dataset.a; saveS(); $$('#pbAv button', o).forEach(x => x.classList.toggle('on', x === b)); });
+  $('[data-x]', o).onclick = () => { closeOv(o); if (curSc === 'home') render('home'); };
+}
+/* ---------- חוקים / הישגים / אלבום ---------- */
+RENDER.rules = () => {
+  const el = $('#rules'); el.innerHTML = backBar(T('rules')) + '<div class="rules">' + GAME_IDS.map(g => `<h2>${GICON[g]} ${esc(gTitle(g))}</h2>${T('ru_' + g)}`).join('') + '</div>'; wireBack(el);
+};
+RENDER.stats = () => {
+  const el = $('#stats'), d = META.daily, streak = d.last && dayNo() - dayNo(d.last) <= 1 ? d.streak : 0;
+  let h = backBar(T('stats')) + `<div class="card"><h3>🔥 ${T('daily')}</h3><div class="stat3"><div><b>${streak}</b><span>${T('s_streak')}</span></div><div><b>${d.best}</b><span>${T('s_best')}</span></div><div><b>${Object.keys(d.done).length}</b><span>${T('s_dailies')}</span></div></div></div>`;
+  for (const g of GAME_IDS) { const p = pg(g); h += `<div class="card"><h3>${GICON[g]} ${esc(gTitle(g))}</h3><div class="stat3"><div><b>${doneOf(g)}/${NLEV(g)}</b><span>${T('s_done')}</span></div><div><b>${starsOf(g)}</b><span>${T('s_stars')}</span></div><div><b>${Object.values(p.lv).filter(x => x >= 3).length}</b><span>${T('s_three')}</span></div></div><div class="stat3" style="margin-top:8px"><div><b>${p.wins || 0}</b><span>${T('s_wins')}</span></div><div><b>${p.games || 0}</b><span>${T('s_games')}</span></div><div></div></div></div>`; }
+  el.innerHTML = h; wireBack(el);
+};
+RENDER.album = () => {
+  const el = $('#album'), n = STICKERS.filter(s => META.stk[s[0]]).length;
+  el.innerHTML = backBar(T('album')) + `<p class="hint">${T('album_d')} · ${n}/${STICKERS.length}</p><div class="stk">${STICKERS.map(([id, ic]) => `<button data-s="${id}" class="${META.stk[id] ? 'got' : ''}"><i>${ic}</i><span>${esc(T('st_' + id))}</span></button>`).join('')}</div>`; wireBack(el);
+  $$('[data-s]', el).forEach(b => b.onclick = () => { const id = b.dataset.s; toast((META.stk[id] ? '🏅 ' : '🔒 ') + T('std_' + id), 3000); });
+};
+/* ---------- הגדרות, גיבוי ---------- */
+const seg = (id, items, cur) => `<div class="seg" data-seg="${id}">${items.map(([v, l]) => `<button data-v="${v}" class="${cur === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+RENDER.settings = () => {
+  const el = $('#settings');
+  el.innerHTML = backBar(T('settings')) + `
+  <div class="card"><div class="lbl" style="margin-top:0">${T('name')}</div><input class="txt" id="sName" maxlength="14" value="${esc(S.name)}" placeholder="${T('you')}"><div class="lbl">${T('pick_av')}</div><div class="avs" id="sAv">${AVATARS.map(a => `<button data-a="${a}" class="${S.av === a ? 'on' : ''}">${a}</button>`).join('')}</div></div>
+  <div class="card"><h3>${T('lang')}</h3>${seg('lang', Object.keys(LANG).filter(l => LANG[l].name).map(l => [l, LANG[l].name]), S.lang)}</div>
+  <div class="card"><h3>${T('look')}</h3><div class="lbl" style="margin-top:0">${T('theme')}</div>${seg('theme', THEMES.map(t => [t, T('th_' + t)]), S.theme)}<div class="lbl">${T('daymode')}</div>${seg('mode', [['night', '🌙 ' + T('night')], ['day', '☀️ ' + T('day')]], S.mode)}</div>
+  <div class="card"><h3>${T('gameplay')}</h3>${[['sound', 'sound'], ['vib', 'vib']].map(([k, t]) => `<div class="sw"><span>${T(t)}</span><input type="checkbox" data-k="${k}" ${S[k] ? 'checked' : ''}></div>`).join('')}</div>
+  <div class="card"><h3>${T('backup')}</h3><p class="hint" style="text-align:start">${T('backup_d')}</p><div class="row"><button class="btn" id="bkOut" style="flex:1">⬇️ ${T('export')}</button><button class="btn" id="bkIn" style="flex:1">⬆️ ${T('import')}</button></div><input type="file" id="bkFile" accept="application/json,.json" style="display:none"></div>
+  <div class="card"><div class="row"><button class="btn" id="stGuide" style="flex:1">🧭 ${T('guide')}</button><button class="btn" id="stAbout" style="flex:1">ℹ️ ${T('about')}</button></div></div>
+  <button class="btn" id="sReset" style="margin-top:12px;border-color:var(--bad);color:var(--bad)">🗑 ${T('reset_all2')}</button>`;
+  wireBack(el);
+  $('#sName', el).oninput = e => { S.name = e.target.value.slice(0, 14); saveS(); };
+  $$('#sAv button', el).forEach(b => b.onclick = () => { S.av = b.dataset.a; saveS(); render('settings'); });
+  $$('[data-seg]', el).forEach(sg => $$('button', sg).forEach(b => b.onclick = () => { const k = sg.dataset.seg; S[k] = b.dataset.v; saveS(); if (k === 'lang') applyLang(); applyTheme(); render('settings'); }));
+  $$('[data-k]', el).forEach(c => c.onchange = () => { S[c.dataset.k] = c.checked; saveS(); });
+  $('#bkOut', el).onclick = exportBackup; $('#bkIn', el).onclick = () => $('#bkFile', el).click();
+  $('#bkFile', el).onchange = e => { const f = e.target.files[0]; if (f) importBackup(f); e.target.value = ''; };
+  $('#stGuide', el).onclick = () => showGuide(); $('#stAbout', el).onclick = () => { show('about'); render('about'); };
+  $('#sReset', el).onclick = () => confirmBox(T('reset_q1'), () => confirmBox(T('reset_q2'), () => { try { Object.keys(localStorage).filter(k => k.indexOf('tn_') === 0).forEach(k => localStorage.removeItem(k)); } catch (e) {} location.reload(); }));
+};
+function exportBackup() {
+  const data = { app: 'thinknest', v: APP_VERSION, by: S.name, date: new Date().toISOString(), settings: S, prog: P, meta: META };
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' }), name = 'thinknest-backup-' + dayKey() + '.json';
+  const file = typeof File !== 'undefined' ? new File([blob], name, { type: 'application/json' }) : null;
+  if (file && navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: 'ThinkNest' }).catch(() => {}); return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); toast(T('exported'));
+}
+function importBackup(f) {
+  const r = new FileReader();
+  r.onload = () => {
+    let d; try { d = JSON.parse(r.result); } catch (e) { toast(T('bad_file')); return; }
+    if (!d || d.app !== 'thinknest' || !d.prog) { toast(T('bad_file')); return; }
+    confirmBox(T('import_q', { n: d.by || '?', d: (d.date || '').slice(0, 10) }), () => { store.set('tn_set', d.settings || {}); store.set('tn_prog', d.prog || {}); store.set('tn_meta', d.meta || {}); location.reload(); });
+  };
+  r.readAsText(f);
+}
+/* ---------- אודות ---------- */
+let deferredInstall = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
+RENDER.about = () => {
+  const el = $('#about'), nl = GAME_IDS.reduce((a, g) => a + NLEV(g), 0), link = location.origin + location.pathname;
+  el.innerHTML = backBar(T('about')) + `<div class="card" style="text-align:center"><img src="icon-192.png" alt="" width="84" height="84" style="border-radius:20px"><h2 style="margin:8px 0 2px">ThinkNest</h2><div class="hint">${T('app_sub')}</div><div class="hint" style="direction:ltr">v${APP_VERSION}</div></div>
+  <div class="card">${[['a_ver', 'v' + APP_VERSION], ['a_dev', 'Barak Aflalo'], ['a_plat', 'PWA · HTML5'], ['a_store', T('a_local')], ['a_levels', nl], ['a_lic', '© AppNest 2026']].map(([k, v]) => `<div class="sw"><span>${T(k)}</span><b style="direction:ltr">${v}</b></div>`).join('')}</div>
+  <div class="card" style="display:flex;flex-direction:column;gap:8px"><a class="btn linkbtn" href="https://appnest-store.pages.dev" target="_blank" rel="noopener">🏪 ${T('a_storeLink')}</a><button class="btn" id="aShare">📤 ${T('a_share')}</button>${deferredInstall ? `<button class="btn" id="aInst">📲 ${T('install')}</button>` : ''}<a class="btn linkbtn" href="mailto:appnest55@gmail.com?subject=ThinkNest">✉️ ${T('a_feedback')}</a><button class="btn" id="aGuide">🧭 ${T('guide')}</button><a class="btn linkbtn" href="privacy_policy.html" target="_blank">🔒 ${T('a_privacy')}</a></div>
+  <div class="card"><p class="hint" style="margin:0;text-align:start">${T('a_disc')}</p></div>`; wireBack(el);
+  $('#aShare', el).onclick = () => { const d = { title: 'ThinkNest', text: T('share_txt', { n: S.name || '' }), url: link }; if (navigator.share) navigator.share(d).catch(() => {}); else (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(() => toast(T('copied'))).catch(() => toast(link, 4000)); };
+  const ib = $('#aInst', el); if (ib) ib.onclick = () => { deferredInstall.prompt(); deferredInstall = null; };
+  $('#aGuide', el).onclick = () => showGuide();
+};
+/* ---------- מדריך (5 שלבים) ---------- */
+function showGuide() {
+  if (guideEl) return; let i = 0; const steps = [['🪺', 'g1'], ['🗺️', 'g2'], ['👆', 'g3'], ['📅', 'g4'], ['👥', 'g5']];
+  const draw = () => {
+    guideEl.innerHTML = `<div class="box"><div class="gbig">${steps[i][0]}</div><h3>${T(steps[i][1] + 't')}</h3><p>${T(steps[i][1])}</p><div class="dots">${steps.map((s, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div><button class="btn pri" data-n>${i === steps.length - 1 ? T('letsplay') : T('next')}</button><button class="btn sm" data-s>${T('skip')}</button></div>`;
+    $('[data-n]', guideEl).onclick = () => { if (++i >= steps.length) endGuide(); else draw(); }; $('[data-s]', guideEl).onclick = endGuide;
+  };
+  guideEl = document.createElement('div'); guideEl.className = 'ov'; guideEl.dataset.nobk = 1; document.body.appendChild(guideEl); overlays.push(guideEl); syncHistory(); draw();
+}
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+GAME_IDS.forEach(g => { const G0 = Games[g], f = G0.startSolo; G0.startSolo = function (n) { META.last = { g, n }; saveMeta(); return f.call(G0, n); }; });
 
 </script>
 </body>
