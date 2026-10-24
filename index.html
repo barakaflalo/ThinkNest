@@ -172,6 +172,8 @@ input.txt:focus{border-color:var(--acc)}
 #play .hint:empty{display:none}
 #play .hud .stat{background:rgba(10,20,30,.45);border-radius:14px;padding:4px 14px}
 #play .hud .stat small{color:#dfe8ee}
+#play[data-bg=arty]{background:linear-gradient(180deg,#3d86c6,#8cc7ee 55%,#d9efff)}
+:root[data-mode=day] #play[data-bg=arty]{background:linear-gradient(180deg,#8fcdf5,#cfeafc 60%,#f0f9ff)}
 </style>
 </head>
 <body>
@@ -1109,6 +1111,65 @@ const NestLink = (() => {
   if (typeof module !== 'undefined') module.exports = api; else root.Cata = api;
 })(typeof self !== 'undefined' ? self : this);
 
+/* ===== engines/arty.js ===== */
+/* קרב הגבעות — מנוע ארטילריה (טהור, דטרמיניסטי). שני תותחים על גבעות, זווית+עוצמה, רוח, קרקע הניתנת להרס. y כלפי מטה. */
+(function (root) {
+  'use strict';
+  const W = 14, H = 14, RES = 0.1, N = 140, G = 12, VMAX = 17, DT = 1 / 120, TX = [1.8, 12.2];
+  const WP = { shell: { r: 1.0, dmg: 45, rad: 2.0, n: 1 }, big: { r: 1.6, dmg: 78, rad: 3.0, n: 1 }, triple: { r: 0.8, dmg: 30, rad: 1.7, n: 3 } };
+  function prng(sd) { let a = sd >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function create(o) {
+    const R = prng(o.seed * 17 + 3), rough = o.rough == null ? 1 : o.rough, p1 = R() * 6, p2 = R() * 6, p3 = R() * 6, bump = 1.2 + R() * 1.6 * rough + 0.6;
+    const h = []; for (let i = 0; i < N; i++) { const x = (i + 0.5) * RES; let v = 9.2 + rough * (1.1 * Math.sin(x * 0.55 + p1) + 0.7 * Math.sin(x * 1.1 + p2) + 0.35 * Math.sin(x * 2.3 + p3)) - bump * Math.exp(-Math.pow((x - 7) / 2.0, 2)); h.push(Math.max(5.5, Math.min(12, v))); }
+    for (const tx of TX) { let s = 0, c = 0; for (let i = 0; i < N; i++) if (Math.abs((i + 0.5) * RES - tx) < 0.9) { s += h[i]; c++; } const m = s / c; for (let i = 0; i < N; i++) if (Math.abs((i + 0.5) * RES - tx) < 0.9) h[i] = m; }
+    const w = { W, H, h, tanks: [0, 1].map(i => ({ x: TX[i], y: 0, hp: o.hp ? o.hp[i] : 100, ang: 45, pow: 0.6, big: 2, triple: 2, last: null })), wind: 0, wmax: o.wind || 0, rs: (o.seed * 977 + 13) >>> 0, turn: 0, shots: 0 };
+    settle(w); nextWind(w, true); return w;
+  }
+  function rnd(w) { w.rs = (w.rs + 0x6D2B79F5) >>> 0; let t = w.rs; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+  function nextWind(w, first) { if (!w.wmax) { w.wind = 0; return; } w.wind = first ? (rnd(w) * 2 - 1) * w.wmax : Math.max(-w.wmax, Math.min(w.wmax, w.wind + (rnd(w) - 0.5) * w.wmax * 1.2)); w.wind = Math.round(w.wind * 10) / 10; }
+  const surf = (w, x) => { const i = Math.max(0, Math.min(N - 1, Math.floor(x / RES))); return w.h[i]; };
+  function settle(w) { for (const t of w.tanks) t.y = surf(w, t.x); }
+  const barrel = (w, side, ang) => { const t = w.tanks[side], dir = side ? -1 : 1, a = (ang == null ? t.ang : ang) * Math.PI / 180; return [t.x + dir * Math.cos(a) * 0.75, t.y - 0.5 - Math.sin(a) * 0.75]; };
+  // מסלול של פגז אחד: מחזיר {path:[[x,y]..כל 4 צעדים], ex:{x,y}}
+  function trace(w, side, ang, pow, dirOverride) {
+    const dir = side ? -1 : 1, a = ang * Math.PI / 180, v = VMAX * pow, s = barrel(w, side, ang);
+    let x = s[0], y = s[1], vx = dir * Math.cos(a) * v, vy = -Math.sin(a) * v; const path = [[x, y]]; let t = 0, k = 0;
+    for (;;) {
+      vx += w.wind * DT; vy += G * DT; x += vx * DT; y += vy * DT; t += DT; k++; if (k % 4 === 0) path.push([x, y]);
+      if (x < -3 || x > W + 3 || y > H + 1 || t > 12) return { path, ex: null, out: true };
+      if (x >= 0 && x < W && y >= surf(w, x)) return { path, ex: { x, y: Math.min(y, surf(w, x)) }, out: false };
+      for (let i = 0; i < 2; i++) { const tk = w.tanks[i]; if (tk.hp > 0 && !(i === side && t < 0.35) && Math.hypot(x - tk.x, y - (tk.y - 0.35)) < 0.5) return { path, ex: { x, y }, out: false, hit: i }; }
+    }
+  }
+  function fireShots(w, side, ang, pow, wp) {
+    const spec = WP[wp], out = [];
+    const angs = spec.n === 3 ? [ang - 6, ang, ang + 6] : [ang];
+    for (const a of angs) { const tr = trace(w, side, Math.max(1, Math.min(89, a)), pow); out.push({ path: tr.path, ex: tr.ex, wp }); }
+    return out;
+  }
+  function damageOf(w, shots) { const d = [0, 0]; for (const s of shots) { if (!s.ex) continue; const sp = WP[s.wp]; for (let i = 0; i < 2; i++) { const t = w.tanks[i], dist = Math.hypot(t.x - s.ex.x, t.y - 0.35 - s.ex.y); if (dist < sp.rad) d[i] += sp.dmg * (1 - dist / sp.rad); } } return d.map(Math.round); }
+  function resolve(w, side, ang, pow, wp, shots) { // מחיל נזק ומכתשים
+    const d = damageOf(w, shots); w.tanks.forEach((t, i) => { t.hp = Math.max(0, t.hp - d[i]); });
+    for (const s of shots) { if (!s.ex) continue; const r = WP[s.wp].r; for (let i = 0; i < N; i++) { const dx = (i + 0.5) * RES - s.ex.x; if (Math.abs(dx) < r) { const bot = s.ex.y + Math.sqrt(r * r - dx * dx); if (bot > w.h[i]) w.h[i] = Math.min(H - 0.5, bot); } } }
+    settle(w); const t = w.tanks[side]; t.ang = ang; t.pow = pow; if (wp === 'big') t.big--; if (wp === 'triple') t.triple--;
+    t.last = shots[0] && shots[0].ex ? [shots[0].ex.x, shots[0].ex.y] : null; w.shots++; return d;
+  }
+  const ammo = (w, side, wp) => wp === 'shell' ? 99 : w.tanks[side][wp];
+  function end(w) { const a = w.tanks[0].hp, b = w.tanks[1].hp; if (a > 0 && b > 0) return null; return a === b ? 'draw' : (a > 0 ? 0 : 1); }
+  function clone(w) { return JSON.parse(JSON.stringify(w)); }
+  // ---- בוטים ----
+  const BOTS = [null, { sa: 9, sp: 0.13, top: 14, big: 0.2 }, { sa: 5, sp: 0.07, top: 5, big: 0.5 }, { sa: 2.8, sp: 0.04, top: 2, big: 0.8 }, { sa: 1.0, sp: 0.014, top: 1, big: 1 }, { sa: 3.6, sp: 0.05, top: 2, big: 0.7 }];
+  function botShot(w, side, lvl, R, scale) {
+    const B = Object.assign({}, BOTS[lvl], scale ? { sa: scale.sa, sp: scale.sp } : {}); const cand = [];
+    const wps = ['shell']; if (w.tanks[side].big > 0 && R() < B.big) wps.push('big'); if (w.tanks[side].triple > 0 && R() < B.big) wps.push('triple');
+    for (const wp of wps) for (let a = 12; a <= 82; a += 2) for (let p = 0.3; p <= 1.0001; p += 0.02) { const sh = fireShots(w, side, a, p, wp), d = damageOf(w, sh); cand.push({ a, p, wp, sc: d[1 - side] - 1.2 * d[side] + R() * 0.01 }); }
+    cand.sort((x, y) => y.sc - x.sc); const pick = cand[Math.min(cand.length - 1, Math.floor(R() * B.top))]; const g = () => (R() + R() + R() - 1.5) * 1.15;
+    return { a: Math.max(8, Math.min(86, pick.a + g() * B.sa)), p: Math.max(0.25, Math.min(1, pick.p + g() * B.sp)), wp: pick.wp };
+  }
+  const api = { W, H, N, RES, G, VMAX, DT, WP, TX, create, trace, fireShots, damageOf, resolve, nextWind, settle, surf, barrel, ammo, end, clone, prng, rnd, BOTS, botShot };
+  if (typeof module !== 'undefined') module.exports = api; else root.Arty = api;
+})(typeof self !== 'undefined' ? self : this);
+
 /* ===== src/i18n.js ===== */
 /* ThinkNest — תרגומים: עברית, אנגלית, רוסית, ספרדית, ערבית. מפתח חסר ← אנגלית. */
 const LANG = {
@@ -1341,6 +1402,19 @@ ar: {
   for (const l in A) LANG[l]['ru_cata'] = A[l].ru_cata;
 })();
 
+/* ===== src/i18n_arty.js ===== */
+/* מחרוזות של קרב הגבעות */
+(function () {
+  const A = {
+    he: { g_arty: 'קרב הגבעות', d_arty: 'תותחים, זווית ועוצמה', a_fire: 'ירי!', a_wind: 'רוח', a_help: 'בחרו זווית ועוצמה ואז ירו', ru_arty: '<p>שני תותחים על שתי גבעות, כל אחד בתורו. בוחרים <b>זווית</b> ו<b>עוצמה</b> ויורים. הרוח (החץ למעלה) דוחפת את הפגז. כל פגיעה מורידה חיים וחופרת בור בקרקע. מי שהחיים שלו נגמרים — מפסיד.</p><p>סימן ✕ מראה איפה הפגז הקודם שלכם נפל, וזה עוזר לתקן. 💥 פגז גדול (פעמיים), 🔱 שלושה פגזים יחד (פעמיים).</p><p>בשלבים: 20 יריבים מול המחשב, מהקל לקשה. כוכבים לפי החיים שנשארו לכם.</p>' },
+    en: { g_arty: 'Hill Duel', d_arty: 'Cannons, angle and power', a_fire: 'Fire!', a_wind: 'Wind', a_help: 'Set angle and power, then fire', ru_arty: '<p>Two cannons on two hills, taking turns. Choose <b>angle</b> and <b>power</b>, then fire. The wind (arrow on top) pushes the shell. Every hit takes health and digs a crater. Whoever runs out of health loses.</p><p>The ✕ marks where your last shell landed, so you can correct. 💥 big shell (twice), 🔱 three shells at once (twice).</p><p>Levels: 20 opponents, easy to hard. Stars depend on the health you have left.</p>' },
+    ru: { g_arty: 'Битва холмов', d_arty: 'Пушки, угол и сила', a_fire: 'Огонь!', a_wind: 'Ветер', a_help: 'Выберите угол и силу, затем стреляйте', ru_arty: '<p>Две пушки на двух холмах, ходят по очереди. Выбирайте <b>угол</b> и <b>силу</b> и стреляйте. Ветер (стрелка сверху) сносит снаряд. Каждое попадание отнимает здоровье и роет воронку. У кого здоровье кончилось — проиграл.</p><p>Крестик ✕ показывает, куда упал прошлый снаряд. 💥 большой снаряд (дважды), 🔱 три снаряда сразу (дважды).</p><p>Уровни: 20 соперников от лёгких к сложным. Звёзды — по оставшемуся здоровью.</p>' },
+    es: { g_arty: 'Duelo de colinas', d_arty: 'Cañones, ángulo y fuerza', a_fire: '¡Fuego!', a_wind: 'Viento', a_help: 'Elige ángulo y fuerza y dispara', ru_arty: '<p>Dos cañones en dos colinas, por turnos. Elige el <b>ángulo</b> y la <b>fuerza</b> y dispara. El viento (flecha arriba) empuja el proyectil. Cada impacto quita vida y abre un cráter. Quien se queda sin vida pierde.</p><p>La ✕ marca dónde cayó tu último disparo. 💥 proyectil grande (dos veces), 🔱 tres proyectiles a la vez (dos veces).</p><p>Niveles: 20 rivales, de fácil a difícil. Las estrellas dependen de la vida que te queda.</p>' },
+    ar: { g_arty: 'معركة التلال', d_arty: 'مدافع وزاوية وقوة', a_fire: 'أطلق!', a_wind: 'الريح', a_help: 'اختر الزاوية والقوة ثم أطلق', ru_arty: '<p>مدفعان على تلّين، بالتناوب. اختر <b>الزاوية</b> و<b>القوة</b> ثم أطلق. تدفع الريح (السهم في الأعلى) القذيفة. كل إصابة تُنقص الصحة وتحفر حفرة. من تنتهي صحته يخسر.</p><p>العلامة ✕ تُظهر أين سقطت قذيفتك السابقة لتصحّح. 💥 قذيفة كبيرة (مرتان)، 🔱 ثلاث قذائف معاً (مرتان).</p><p>المراحل: 20 خصماً من السهل إلى الصعب. النجوم حسب الصحة المتبقية.</p>' }
+  };
+  for (const l in A) Object.assign(LANG[l], A[l]);
+})();
+
 /* ===== src/i18n_shell.js ===== */
 /* מחרוזות המעטפת: בית, הגדרות, אודות, חוקים, סטטיסטיקה, אלבום, מדריך */
 (function () {
@@ -1409,7 +1483,7 @@ ar: {
 /* ===== src/app.js ===== */
 'use strict';
 /* ThinkNest — מעטפת: שפות, אחסון, ניווט, מסכים, אונליין (NestLink). המשחקים נרשמים ב-Games. */
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.2.0';
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const store = {
@@ -2853,10 +2927,220 @@ window.__tn = { get run() { return activeRun; }, get sc() { return curSc; }, get
   function closeAllOv() { while (overlays.length) { const o = overlays[overlays.length - 1]; if (o === guideEl) break; closeOv(o); } }
 })();
 
+/* ===== src/arty_ui.js ===== */
+'use strict';
+/* קרב הגבעות — ארטילריה: קמפיין מול המחשב, מול המחשב (4 רמות), שניים בטלפון, אונליין. המנוע: Arty. */
+(function () {
+  const E = Arty, W = E.W, VY0 = -1.5, VH = 15.5;
+  const LV = []; for (let n = 1; n <= 20; n++) { const t = (n - 1) / 19; LV.push({ n, seed: n * 13 + 5, wind: Math.round(t * 40) / 10, rough: 0.55 + 0.75 * t, bot: n <= 5 ? 1 : n <= 10 ? 2 : n <= 15 ? 3 : 4, sa: 8.5 - 6.6 * t, sp: 0.12 - 0.088 * t }); }
+  const WPN = { shell: '●', big: '💥', triple: '🔱' }, TEAM = ['#4f8be8', '#e8584f'];
+
+  class Run {
+    constructor(cfg) {
+      this.cfg = cfg; this.mode = cfg.mode; this.dead = false; this.paused = false; this.net = cfg.mode === 'online';
+      this.state = this.net ? 'count' : 'aim'; this.cd = 3.2; this.lastCd = 4; this.parts = []; this.rings = []; this.anim = null; this.wp = 'shell'; this.t = 0;
+      const lv = cfg.lv; if (cfg.mode === 'solo') { this.w = E.create({ seed: lv.seed, wind: lv.wind, rough: lv.rough }); this.bot = { lvl: lv.bot, sc: { sa: lv.sa, sp: lv.sp } }; }
+      else { this.w = E.create({ seed: cfg.seed, wind: cfg.mode === 'cpu' ? 2.5 : 3, rough: 1 }); if (cfg.mode === 'cpu') this.bot = { lvl: cfg.lv, sc: null }; }
+      this.R = E.prng((cfg.seed || (lv && lv.seed) || 1) * 5 + 2); this.me = this.net ? (Net.link.session.role === 'host' ? 0 : 1) : 0; this.drawY = this.w.tanks.map(t => t.y); this.shots = 0;
+      this.build(); this.last = performance.now(); this.raf = requestAnimationFrame(t => this.loop(t));
+      this._rs = () => this.layout(); window.addEventListener('resize', this._rs); if (this.net) Net.handler = this;
+      if (this.state === 'aim') this.beginTurn();
+    }
+    get turn() { return this.w.turn; }
+    isBot() { return !!this.bot && this.turn === 1; }
+    mine() { return this.mode === 'two' || (this.net ? this.turn === this.me : this.turn === 0); }
+    build() {
+      const el = $('#play');
+      el.innerHTML = `<div class="hud"><button class="ib" data-pause>⏸</button><div class="stat" data-stat></div><button class="ib" data-snd>${S.sound ? '🔊' : '🔇'}</button></div>
+      <div class="boardwrap" data-bw style="flex:0 0 auto"><canvas></canvas></div>
+      <div class="hint" data-msg style="min-height:34px;text-align:center"></div>
+      <div class="arty" data-ctl style="display:flex;flex-direction:column;gap:6px;direction:ltr">
+        <div class="row" style="gap:6px;align-items:center"><b style="width:74px;text-align:center" data-av></b><button class="ib" data-d="a-" style="width:54px;height:46px">−</button><input type="range" min="5" max="85" step="1" data-ar style="flex:1;height:40px;accent-color:var(--acc)"><button class="ib" data-d="a+" style="width:54px;height:46px">+</button></div>
+        <div class="row" style="gap:6px;align-items:center"><b style="width:74px;text-align:center" data-pv></b><button class="ib" data-d="p-" style="width:54px;height:46px">−</button><input type="range" min="10" max="100" step="1" data-pr style="flex:1;height:40px;accent-color:var(--acc)"><button class="ib" data-d="p+" style="width:54px;height:46px">+</button></div>
+        <div class="row" style="gap:6px"><div class="seg" data-wp style="flex:1;display:flex;gap:6px"></div><button class="btn pri" data-fire style="flex:1.2;height:54px;font-size:20px;margin:0">${T('a_fire')}</button></div>
+      </div>${this.net ? Net.voiceBar() : ''}<div class="countdown" data-cd></div>`;
+      this.el = el; this.bw = $('[data-bw]', el); this.cv = $('canvas', this.bw); this.msg = $('[data-msg]', el);
+      $('[data-pause]', el).onclick = () => this.onBack(); $('[data-snd]', el).onclick = e => { S.sound = !S.sound; saveS(); e.currentTarget.textContent = S.sound ? '🔊' : '🔇'; };
+      const ar = $('[data-ar]', el), pr = $('[data-pr]', el);
+      ar.oninput = () => this.setVals(+ar.value, null); pr.oninput = () => this.setVals(null, +pr.value / 100);
+      const step = (k, d) => { const t = this.w.tanks[this.turn]; if (!this.canAim()) return; if (k === 'a') this.setVals(t.ang + d, null); else this.setVals(null, t.pow + d / 100); };
+      $$('[data-d]', el).forEach(b => { const k = b.dataset.d[0], d = b.dataset.d[1] === '+' ? 1 : -1; let tm = null; const go = () => { step(k, d); tm = setTimeout(() => { go(); }, 110); }; b.addEventListener('pointerdown', e => { e.preventDefault(); go(); }); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, () => { clearTimeout(tm); })); });
+      $('[data-fire]', el).onclick = () => { if (this.canAim()) this.shoot(this.turn, true); };
+      if (this.net) Net.wireVoice(el);
+      setTimeout(() => this.layout(), 0);
+    }
+    layout() {
+      const r = this.bw.getBoundingClientRect(), pw = this.el.getBoundingClientRect().width; this.cs = Math.max(10, (pw - 4) / W);
+      const maxH = window.innerHeight - 350; if (VH * this.cs > maxH && maxH > 200) this.cs = maxH / VH;
+      const d = Math.min(window.devicePixelRatio || 1, 2), w = W * this.cs, h = VH * this.cs;
+      this.cv.width = Math.round(w * d); this.cv.height = Math.round(h * d); this.cv.style.width = w + 'px'; this.cv.style.height = h + 'px';
+      this.ctx = this.cv.getContext('2d'); this.ctx.setTransform(d, 0, 0, d, 0, 0);
+    }
+    canAim() { return this.state === 'aim' && !this.paused && this.mine(); }
+    setVals(a, p) { const t = this.w.tanks[this.turn]; if (a != null) t.ang = Math.max(5, Math.min(85, Math.round(a))); if (p != null) t.pow = Math.max(0.1, Math.min(1, Math.round(p * 100) / 100)); this.syncCtl(); }
+    syncCtl() {
+      const t = this.w.tanks[this.turn], el = this.el; $('[data-ar]', el).value = t.ang; $('[data-pr]', el).value = Math.round(t.pow * 100);
+      $('[data-av]', el).textContent = '∠ ' + t.ang + '°'; $('[data-pv]', el).textContent = '⚡ ' + Math.round(t.pow * 100);
+      const box = $('[data-wp]', el), en = this.canAim();
+      box.innerHTML = ['shell', 'big', 'triple'].map(k => { const n = E.ammo(this.w, this.turn, k); return `<button class="btn ${this.wp === k ? 'pri' : ''}" data-w="${k}" ${n <= 0 ? 'disabled style="opacity:.35"' : ''} style="flex:1;margin:0;height:54px;padding:0">${WPN[k]}${k === 'shell' ? '' : ' ×' + n}</button>`; }).join('');
+      $$('[data-w]', box).forEach(b => b.onclick = () => { if (!this.canAim()) return; this.wp = b.dataset.w; SFX.tap(); this.syncCtl(); });
+      $$('[data-ctl] button,[data-ctl] input', el).forEach(b => { if (!b.disabled || b.dataset.w) b.style.pointerEvents = en ? '' : 'none'; }); $('[data-ctl]', el).style.opacity = en ? 1 : 0.55;
+    }
+    beginTurn() {
+      this.state = 'aim'; this.wp = 'shell'; this.syncCtl();
+      if (this.isBot()) { this.msg.textContent = T('c_bot_think'); setTimeout(() => this.botMove(), 900); return; }
+      const nm = this.mode === 'two' ? T(this.turn ? 'p2' : 'p1') + ' — ' : '';
+      this.msg.textContent = this.net && this.turn !== this.me ? T('c_opp_turn') : nm + T('c_your') + ' · ' + T('a_help');
+    }
+    botMove() {
+      if (this.dead || this.state !== 'aim' || !this.isBot()) return; const s = E.botShot(this.w, 1, this.bot.lvl, this.R, this.bot.sc); this.wp = s.wp;
+      const t = this.w.tanks[1]; t.ang = Math.round(s.a); t.pow = Math.round(s.p * 100) / 100; this.syncCtl(); setTimeout(() => { if (!this.dead && this.state === 'aim') this.shoot(1, false, s); }, 650);
+    }
+    shoot(side, local, exact) {
+      if (this.state !== 'aim') return; if (local && !this.mine()) return; const t = this.w.tanks[side]; if (E.ammo(this.w, side, this.wp) <= 0) { this.wp = 'shell'; }
+      const a = exact ? exact.a : t.ang, p = exact ? exact.p : t.pow, wp = this.wp; this.cur = { side, a, p, wp, shots: E.fireShots(this.w, side, a, p, wp) };
+      this.state = 'fly'; this.fi = 0; this.shots++; SFX.tap(); vib(15); this.msg.textContent = '';
+      if (local && this.net && Net.link && Net.link.isOpen()) Net.link.send({ type: 'shot', s: side, a, p, wp });
+      this.syncCtl();
+    }
+    afterShot() {
+      const c = this.cur, w = this.w, d = E.resolve(w, c.side, c.a, c.p, c.wp, c.shots); this.cur = null; this.state = 'res';
+      c.shots.forEach(s => { if (s.ex) this.boom(s.ex.x, s.ex.y, E.WP[s.wp].r); }); if (d[0] || d[1]) { SFX.lock(); vib(40); }
+      this.floats = d.map((v, i) => v ? { i, v, t: 0 } : null).filter(Boolean);
+      setTimeout(() => this.afterRes(), 900);
+    }
+    afterRes() {
+      if (this.dead) return; const w = this.w;
+      if (this.net && Net.link.session.role !== 'host') { this.state = 'waitsnap'; if (this.pendingSnap) { const s = this.pendingSnap; this.pendingSnap = null; this.applySnap(s); } else this.waitT = 4; return; }
+      this.endTurn(true);
+    }
+    endTurn(send) {
+      const w = this.w, res = E.end(w); if (res === null) { w.turn = 1 - w.turn; E.nextWind(w); }
+      if (send && this.net && Net.link.isOpen()) Net.link.send({ type: 'snap', w, res });
+      if (res !== null) { this.state = 'end'; setTimeout(() => this.finish(res), 600); return; }
+      this.beginTurn();
+    }
+    applySnap(s) { this.w = s.w; this.cur = null; if (s.res !== null && s.res !== undefined) { this.state = 'end'; setTimeout(() => this.finish(s.res), 600); return; } this.beginTurn(); }
+    onMessage(m) {
+      if (m.type === 'shot') { if (this.state === 'aim' && m.s === this.turn) { const t = this.w.tanks[m.s]; t.ang = m.a; t.pow = m.p; this.wp = m.wp; this.shoot(m.s, false, { a: m.a, p: m.p }); } }
+      else if (m.type === 'snap') { if (this.state === 'waitsnap') this.applySnap(m); else if (this.state === 'fly' || this.state === 'res') this.pendingSnap = m; else this.applySnap(m); }
+      else if (m.type === 'bye') { if (this.state !== 'end') { toast(T('on_left')); this.state = 'end'; this.finish(this.me); } }
+      else if (m.type === 'again') { if (Net.link.session.role === 'host') { const msg = G.onlineStartMsg(); Net.link.send(msg); Net.onMessage(msg, 0); } }
+    }
+    onNetStatus(st) { if (st === 'reconnecting') toast(T('on_reconn'), 3000); }
+    onRoster() {}
+    nameOf(i) { if (this.mode === 'two') return T(i ? 'p2' : 'p1'); if (this.net) return i === this.me ? T('you') : T('opp'); return i === 0 ? T('you') : T('bot'); }
+    boom(x, y, r) {
+      this.rings.push({ x, y, r, t: 0 }); for (let i = 0; i < 16; i++) this.parts.push({ x, y, vx: (Math.random() - 0.5) * 9, vy: -Math.random() * 8, t: 0, c: i % 3 ? '#8a5a2b' : '#ffcf5a', r: 0.07 + Math.random() * 0.1 }); SFX.hit();
+    }
+    finish(res) {
+      if (this.state === 'fin') return; this.state = 'fin'; const m = this.mode, st = pg('arty'); let html = '', btns = '';
+      if (m === 'solo') {
+        const win = res === 0;
+        if (win) { const hp = this.w.tanks[0].hp, stars = hp >= 60 ? 3 : hp >= 25 ? 2 : 1; if (stars > (st.lv[this.cfg.lv.n] || 0)) st.lv[this.cfg.lv.n] = stars; st.games++; st.wins++; saveP(); Meta.after('arty', 'solo', true, this.cfg.lv.n); SFX.win();
+          html = `<h3>${T('done')}</h3><div class="big-st">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</div><p>❤ ${hp}</p>`; if (this.cfg.lv.n < LV.length) btns += `<button class="btn pri" data-e="next">${T('next_level')}</button>`; btns += `<button class="btn" data-e="again">${T('retry')}</button><button class="btn" data-e="quit">${T('m_solo')}</button>`; }
+        else { st.games++; saveP(); Meta.after('arty', 'solo', false, this.cfg.lv.n); SFX.lose(); html = `<h3>${res === 'draw' ? T('draw') : T('lose')}</h3>`; btns = `<button class="btn pri" data-e="again">${T('retry')}</button><button class="btn" data-e="quit">${T('m_solo')}</button>`; }
+      } else {
+        let title, win = false; if (res === 'draw') title = T('draw'); else if (m === 'two') title = T('p_wins', { n: T(res ? 'p2' : 'p1') }); else { win = res === this.me; title = win ? T('win') : T('lose'); }
+        if (m === 'two') { Meta.after('arty', 'two', true); SFX.win(); } else { st.games++; if (win) st.wins++; saveP(); Meta.after('arty', m, win); win ? SFX.win() : SFX.lose(); }
+        html = `<h3>${title}</h3><p>❤ ${this.w.tanks[0].hp} : ${this.w.tanks[1].hp}</p>`; btns = `<button class="btn pri" data-e="again">${T(this.net ? 'rematch' : 'retry')}</button><button class="btn" data-e="quit">${T('home')}</button>`;
+      }
+      setTimeout(() => { const o = openOv(html + btns); o.dataset.nobk = 1; $$('[data-e]', o).forEach(b => b.onclick = () => { closeOv(o); this.endAct(b.dataset.e); }); }, 450);
+    }
+    endAct(a) {
+      const cfg = this.cfg;
+      if (a === 'quit') { if (this.net) Net.leave(); activeRun = null; this.destroy(); let prev = stack.pop() || 'home'; if (prev === 'lobby') prev = 'gmenu'; while (stack.length && stack[stack.length - 1] === prev) stack.pop(); show(prev, false); render(prev); return; }
+      if (a === 'next') { this.destroy(); G.startSolo(cfg.lv.n + 1); return; }
+      if (a === 'again') {
+        if (this.net) { if (Net.link.session.role === 'host') { const msg = G.onlineStartMsg(); Net.link.send(msg); Net.onMessage(msg, 0); } else { Net.link.send({ type: 'again' }); toast(T('on_wait_host')); } return; }
+        this.destroy(); if (cfg.mode === 'solo') G.startSolo(cfg.lv.n); else if (cfg.mode === 'cpu') G.startCpu(cfg.lv); else G.startTwo();
+      }
+    }
+    onBack() {
+      if (this.state === 'fin') { this.endAct('quit'); return; } if (this.state === 'end' || this.paused) return; this.paused = true; const online = this.net;
+      const o = openOv(`<h3>${T('pause')}</h3><button class="btn pri" data-r>${T('resume')}</button>${online ? '' : `<button class="btn" data-x>${T('restart')}</button>`}<button class="btn" data-q>${T('quit')}</button>`);
+      o.onclose = () => { this.paused = false; };
+      $('[data-r]', o).onclick = () => closeOv(o);
+      const x = $('[data-x]', o); if (x) x.onclick = () => { o.onclose = null; closeOv(o); this.paused = false; this.endAct('again'); };
+      $('[data-q]', o).onclick = () => { o.onclose = null; closeOv(o); if (this.net) Net.link.send({ type: 'bye' }); this.state = 'fin'; this.endAct('quit'); };
+    }
+    loop(now) {
+      if (this.dead) return; const dt = Math.min(50, now - this.last) / 1000; this.last = now;
+      if (this.state === 'count') { const cd = $('[data-cd]', this.el); this.cd -= dt; const n = Math.ceil(this.cd); if (this.cd > 0) { if (n !== this.lastCd) { this.lastCd = n; if (n <= 3) { cd.textContent = n; SFX.count(); } } } else { cd.textContent = ''; this.beginTurn(); SFX.go(); } }
+      else if (this.state === 'waitsnap') { this.waitT -= dt; if (this.waitT <= 0) this.endTurn(false); }
+      if (this.state === 'fly' && !this.paused) { this.fi += dt * 45; const mx = Math.max(...this.cur.shots.map(s => s.path.length)); if (this.fi >= mx) this.afterShot(); }
+      this.parts.forEach(p => { p.t += dt; p.vy += 22 * dt; p.x += p.vx * dt; p.y += p.vy * dt; }); this.parts = this.parts.filter(p => p.t < 0.9);
+      this.rings.forEach(r => r.t += dt); this.rings = this.rings.filter(r => r.t < 0.5); if (this.floats) { this.floats.forEach(f => f.t += dt); this.floats = this.floats.filter(f => f.t < 1.2); }
+      this.w.tanks.forEach((t, i) => { this.drawY[i] += (t.y - this.drawY[i]) * Math.min(1, dt * 8); });
+      this.t += dt; this.draw(); this.raf = requestAnimationFrame(t => this.loop(t));
+    }
+    draw() {
+      const c = this.ctx; if (!c) return; const cs = this.cs, w = this.w, X = x => x * cs, Y = y => (y - VY0) * cs, now = performance.now();
+      c.clearRect(0, 0, W * cs, VH * cs); c.save(); c.beginPath(); c.roundRect(0, 0, W * cs, VH * cs, 14); c.clip();
+      const sk = c.createLinearGradient(0, 0, 0, VH * cs); sk.addColorStop(0, '#4f9be0'); sk.addColorStop(0.7, '#bfe3fa'); sk.addColorStop(1, '#eaf6ff'); c.fillStyle = sk; c.fillRect(0, 0, W * cs, VH * cs);
+      c.fillStyle = 'rgba(255,255,255,.9)'; [[2.2, 1.4, 1.1], [8.6, 3, 1.0], [12.4, 0.2, 0.8]].forEach(q => { const x = X(q[0]) + Math.sin(now / 6000 + q[0]) * cs * 0.5, y = Y(q[1]), r = q[2] * cs; c.beginPath(); c.arc(x, y, r * 0.5, 0, 7); c.arc(x + r * 0.55, y + r * 0.1, r * 0.4, 0, 7); c.arc(x - r * 0.55, y + r * 0.12, r * 0.38, 0, 7); c.fill(); });
+      c.fillStyle = '#9ccf8a'; c.beginPath(); c.moveTo(0, Y(9)); c.quadraticCurveTo(X(4), Y(6.2), X(8), Y(8.4)); c.quadraticCurveTo(X(11), Y(6.6), X(W), Y(8.8)); c.lineTo(X(W), Y(14)); c.lineTo(0, Y(14)); c.fill();
+      // קרקע
+      c.beginPath(); c.moveTo(0, Y(w.h[0])); for (let i = 0; i < E.N; i++) c.lineTo(X((i + 0.5) * E.RES), Y(w.h[i])); c.lineTo(X(W), Y(w.h[E.N - 1])); c.lineTo(X(W), Y(14.2)); c.lineTo(0, Y(14.2)); c.closePath();
+      const gd = c.createLinearGradient(0, Y(5), 0, Y(14)); gd.addColorStop(0, '#9a6a3a'); gd.addColorStop(1, '#5a3a1c'); c.fillStyle = gd; c.fill();
+      c.strokeStyle = '#5bb45a'; c.lineWidth = cs * 0.3; c.lineJoin = 'round'; c.beginPath(); c.moveTo(0, Y(w.h[0]) - cs * 0.1); for (let i = 0; i < E.N; i++) c.lineTo(X((i + 0.5) * E.RES), Y(w.h[i]) - cs * 0.1); c.stroke();
+      // סימון נחיתה אחרונה
+      w.tanks.forEach((t, i) => { if (t.last) { c.strokeStyle = TEAM[i]; c.globalAlpha = 0.8; c.lineWidth = cs * 0.1; const x = X(t.last[0]), y = Y(t.last[1]) - cs * 0.15, r = cs * 0.15; c.beginPath(); c.moveTo(x - r, y - r); c.lineTo(x + r, y + r); c.moveTo(x + r, y - r); c.lineTo(x - r, y + r); c.stroke(); c.globalAlpha = 1; } });
+      // תותחים
+      w.tanks.forEach((t, i) => { if (t.hp <= 0) { this.drawWreck(c, X(t.x), Y(this.drawY[i]), cs); return; } this.drawTank(c, i, X(t.x), Y(this.drawY[i]), cs, t); });
+      // פגזים
+      if (this.state === 'fly' && this.cur) for (const s of this.cur.shots) { const k = Math.min(Math.floor(this.fi), s.path.length - 1); if (this.fi >= s.path.length) continue; const p = s.path[k], f = this.fi - k, q = s.path[Math.min(k + 1, s.path.length - 1)], x = p[0] + (q[0] - p[0]) * f, y = p[1] + (q[1] - p[1]) * f;
+        c.fillStyle = 'rgba(255,255,255,.7)'; for (let j = 1; j < 7; j++) { const pp = s.path[Math.max(0, k - j)]; c.globalAlpha = 0.5 - j * 0.07; c.beginPath(); c.arc(X(pp[0]), Y(pp[1]), cs * 0.07, 0, 7); c.fill(); } c.globalAlpha = 1;
+        const im = Art.get('arty-shell'); if (im) c.drawImage(im, X(x) - cs * 0.22, Y(y) - cs * 0.22, cs * 0.44, cs * 0.44); else { c.fillStyle = '#2d2d33'; c.beginPath(); c.arc(X(x), Y(y), cs * 0.16, 0, 7); c.fill(); c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.arc(X(x) - cs * 0.05, Y(y) - cs * 0.05, cs * 0.05, 0, 7); c.fill(); }
+        if (y < VY0) { c.fillStyle = '#fff'; c.font = `bold ${cs * 0.5}px system-ui`; c.textAlign = 'center'; c.fillText('▲', X(x), cs * 0.6); } }
+      this.rings.forEach(r => { const k = r.t / 0.5; c.globalAlpha = 1 - k; c.fillStyle = '#ffb347'; c.beginPath(); c.arc(X(r.x), Y(r.y), r.r * cs * (0.5 + k), 0, 7); c.fill(); c.fillStyle = '#fff3b0'; c.beginPath(); c.arc(X(r.x), Y(r.y), r.r * cs * (0.3 + k * 0.4), 0, 7); c.fill(); c.globalAlpha = 1; });
+      this.parts.forEach(p => { c.globalAlpha = Math.max(0, 1 - p.t / 0.9); c.fillStyle = p.c; c.beginPath(); c.arc(X(p.x), Y(p.y), p.r * cs, 0, 7); c.fill(); }); c.globalAlpha = 1;
+      if (this.floats) this.floats.forEach(f => { const t = w.tanks[f.i]; c.globalAlpha = Math.max(0, 1 - f.t / 1.2); c.fillStyle = '#fff'; c.strokeStyle = '#c0392b'; c.lineWidth = 3; c.font = `bold ${cs * 0.7}px system-ui`; c.textAlign = 'center'; const x = X(t.x), y = Y(this.drawY[f.i]) - cs * 2 - f.t * cs; c.strokeText('-' + f.v, x, y); c.fillText('-' + f.v, x, y); c.globalAlpha = 1; });
+      c.restore(); this.stat();
+    }
+    drawTank(c, i, x, y, cs, t) {
+      const dir = i ? -1 : 1, a = t.ang * Math.PI / 180, bx = x, by = y - cs * 0.5, art = Art.get('arty-t' + (i + 1));
+      // קנה
+      c.save(); c.translate(bx, by); c.rotate(-dir * a + (i ? Math.PI : 0)); c.fillStyle = '#3a3f4a'; c.beginPath(); c.roundRect(0, -cs * 0.11, cs * 0.8, cs * 0.22, cs * 0.08); c.fill(); c.restore();
+      if (art) c.drawImage(art, x - cs * 0.8, y - cs * 1.25, cs * 1.6, cs * 1.28);
+      else {
+        c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(x, y, cs * 0.7, cs * 0.12, 0, 0, 7); c.fill();
+        c.fillStyle = TEAM[i]; c.beginPath(); c.roundRect(x - cs * 0.62, y - cs * 0.62, cs * 1.24, cs * 0.5, cs * 0.18); c.fill(); c.strokeStyle = 'rgba(0,0,0,.4)'; c.lineWidth = Math.max(1.5, cs * 0.05); c.stroke();
+        c.fillStyle = '#2b2b33'; [-0.4, 0.4].forEach(o => { c.beginPath(); c.arc(x + o * cs, y - cs * 0.14, cs * 0.17, 0, 7); c.fill(); });
+        c.fillStyle = i ? '#e8a95b' : '#c98a55'; c.beginPath(); c.arc(x - dir * cs * 0.05, y - cs * 0.78, cs * 0.3, 0, 7); c.fill(); c.beginPath(); c.arc(x - dir * cs * 0.22, y - cs * 1.02, cs * 0.1, 0, 7); c.arc(x + dir * cs * 0.12, y - cs * 1.04, cs * 0.1, 0, 7); c.fill();
+        c.fillStyle = '#fff'; c.beginPath(); c.arc(x + dir * cs * 0.1, y - cs * 0.82, cs * 0.09, 0, 7); c.fill(); c.fillStyle = '#111'; c.beginPath(); c.arc(x + dir * cs * 0.13, y - cs * 0.82, cs * 0.045, 0, 7); c.fill();
+      }
+      c.fillStyle = 'rgba(0,0,0,.5)'; c.beginPath(); c.roundRect(x - cs * 0.7, y - cs * 1.55, cs * 1.4, cs * 0.2, cs * 0.1); c.fill(); c.fillStyle = t.hp > 50 ? '#59c46a' : t.hp > 25 ? '#f0c24b' : '#e8584f'; c.beginPath(); c.roundRect(x - cs * 0.68, y - cs * 1.53, cs * 1.36 * t.hp / 100, cs * 0.16, cs * 0.08); c.fill();
+      if (this.state === 'aim' && this.w.turn === i) { c.fillStyle = '#fff'; c.beginPath(); const bo = Math.sin(performance.now() / 200) * cs * 0.08; c.moveTo(x - cs * 0.18, y - cs * 1.95 + bo); c.lineTo(x + cs * 0.18, y - cs * 1.95 + bo); c.lineTo(x, y - cs * 1.7 + bo); c.fill(); }
+    }
+    drawWreck(c, x, y, cs) { c.fillStyle = '#444'; c.beginPath(); c.ellipse(x, y - cs * 0.2, cs * 0.6, cs * 0.25, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(80,80,80,.5)'; c.beginPath(); c.arc(x, y - cs * 0.8 - Math.sin(performance.now() / 300) * cs * 0.1, cs * 0.35, 0, 7); c.fill(); }
+    stat() {
+      const st = $('[data-stat]', this.el), w = this.w, wd = w.wind, arrow = wd > 0.05 ? '→' : wd < -0.05 ? '←' : '·';
+      st.innerHTML = `<span style="color:${TEAM[0]}">❤ ${w.tanks[0].hp}<small>${esc(this.nameOf(0))}</small></span><span>${arrow} ${Math.abs(wd).toFixed(1)}<small>${T('a_wind')}</small></span><span style="color:${TEAM[1]}">❤ ${w.tanks[1].hp}<small>${esc(this.nameOf(1))}</small></span>`;
+    }
+    destroy() { this.dead = true; cancelAnimationFrame(this.raf); window.removeEventListener('resize', this._rs); if (this.net && Net.handler === this) Net.handler = null; }
+  }
+  function launch(cfg) {
+    if (activeRun) { try { activeRun.destroy(); } catch (e) {} activeRun = null; }
+    curGame = 'arty'; setPlayBg('arty'); const was = curSc; show('play', was !== 'play'); const r = new Run(cfg); activeRun = r; return r;
+  }
+  const G = Games.arty = {
+    ready: true, modes: ['solo', 'cpu', 'two', 'online'], levels: LV,
+    art() { return '<svg viewBox="0 0 90 70" width="90" height="70"><path d="M0 52 Q20 30 45 50 T90 44 V70 H0Z" fill="#8a5a2b"/><rect x="8" y="34" width="22" height="10" rx="4" fill="#4f8be8"/><rect x="62" y="38" width="22" height="10" rx="4" fill="#e8584f"/><path d="M26 34 Q45 8 64 36" stroke="#fff" stroke-width="2" stroke-dasharray="3 3" fill="none"/></svg>'; },
+    startSolo(n) { launch({ mode: 'solo', lv: LV[n - 1] }); },
+    startCpu(lv) { launch({ mode: 'cpu', lv, seed: 1 + ((Math.random() * 900) | 0) }); },
+    startTwo() { launch({ mode: 'two', seed: 1 + ((Math.random() * 900) | 0) }); },
+    onlineStartMsg() { return { type: 'start', game: 'arty', seed: 1 + ((Math.random() * 900) | 0) }; },
+    startOnline(m) { closeAllOv(); launch({ mode: 'online', seed: m.seed }); },
+    isRunning: () => !!activeRun
+  };
+  function closeAllOv() { while (overlays.length) { const o = overlays[overlays.length - 1]; if (o === guideEl) break; closeOv(o); } }
+})();
+
 /* ===== src/shell2.js ===== */
 'use strict';
 /* ThinkNest — מעטפת AppNest מלאה: בית, אתגר יומי, מדבקות, חוקים, הישגים, הגדרות, גיבוי, אודות, מדריך. */
-const GAME_IDS = ['tetris', 'screws', 'rope', 'td', 'cata'], GICON = { tetris: '🧱', screws: '🔩', rope: '🍓', td: '🐞', cata: '🌰' };
+const GAME_IDS = ['tetris', 'screws', 'rope', 'td', 'cata', 'arty'], GICON = { tetris: '🧱', screws: '🔩', rope: '🍓', td: '🐞', cata: '🌰', arty: '🎯' };
 const STICKERS = [['first_tetris', '🧱'], ['first_screws', '🔩'], ['first_rope', '🍓'], ['first_td', '🐞'], ['stars10', '⭐'], ['stars50', '🌟'], ['stars150', '🏆'], ['three', '✨'], ['cpu', '🤖'], ['two', '👥'], ['online', '🌐'], ['daily1', '📅'], ['streak3', '🔥'], ['streak7', '☄️']];
 const META = Object.assign({ daily: { done: {}, last: '', streak: 0, best: 0 }, stk: {}, cnt: {}, last: null }, store.get('tn_meta', {}));
 const saveMeta = () => store.set('tn_meta', META);
