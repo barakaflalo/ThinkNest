@@ -20,7 +20,7 @@
 })();
 
 /* ThinkNest service worker — network-first for pages (never a bare error), cache-first for files */
-const VERSION = 'thinknest-v3';
+const VERSION = 'thinknest-v4';
 const CORE = ['./', 'manifest.json', 'icon-192.png', 'icon-512.png', 'privacy_policy.html'];
 const ART = ["art/rope-basket.webp","art/rope-berry.webp","art/rope-peg.webp","art/rope-spike.webp","art/rope-star.webp","art/screws-plank-1.webp","art/screws-plank-2.webp","art/screws-plank-3.webp","art/td-ant.webp","art/td-bug.webp","art/td-cannon.webp","art/td-frost.webp","art/td-king.webp","art/td-nest.webp","art/td-peck.webp","art/td-shell.webp","art/td-snail.webp","art/tile-rope.webp","art/tile-screws.webp","art/tile-td.webp","art/tile-tetris.webp"];
 const ROOT = new URL('./', self.registration.scope).pathname;
