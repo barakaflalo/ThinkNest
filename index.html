@@ -189,6 +189,8 @@ input.txt:focus{border-color:var(--acc)}
 :root[data-mode=day] #play[data-bg=hide]{background:linear-gradient(180deg,#cfeec0,#e5f6d6 60%,#b6dca4)}
 #play[data-bg=match]{background:linear-gradient(180deg,#4a3720,#6a4d2c 60%,#40301b)}
 :root[data-mode=day] #play[data-bg=match]{background:linear-gradient(180deg,#f6e2b8,#fbeccd 60%,#e8cf9c)}
+#play[data-bg=chain]{background:linear-gradient(180deg,#27401f,#3d5e2c 60%,#25391b)}
+:root[data-mode=day] #play[data-bg=chain]{background:linear-gradient(180deg,#dcf0b8,#eaf7cc 60%,#c3dd97)}
 </style>
 </head>
 <body>
@@ -1618,6 +1620,91 @@ const NestLink = (() => {
   if (typeof module !== 'undefined') module.exports = api; else root.Match = api;
 })(typeof self !== 'undefined' ? self : this);
 
+/* ===== engines/chain.js ===== */
+'use strict';
+/* שרשרת הביצים — ירי כדורים בסגנון זומה: שרשרת צבעונית מתגלגלת בספירלה אל הבור, הציפור במרכז יורה ביצים. 3+ באותו צבע נעלמות.
+   מנוע דטרמיניסטי טהור: DT קבוע, כל הרנדום מ-seed. עולם 100x160, ציפור ב-(50,80). */
+(function (root) {
+  const DT = 1 / 60, D = 5.4, CX = 50, CY = 80, SHOT_V = 170, CATCH = 45, MX = 6;
+  const prng = sd => { let a = sd >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; };
+  function mkPath(p) {
+    const M = 3000, pts = [], cum = [0];
+    for (let i = 0; i <= M; i++) { const t = i / M, th = p.th0 + p.dir * p.turns * 2 * Math.PI * t, r = p.rIn + (p.rOut - p.rIn) * (1 - t) + p.wob * Math.sin(t * p.wf * 2 * Math.PI) * 4 * t * (1 - t); pts.push([CX + r * Math.cos(th), CY + 1.3 * r * Math.sin(th)]); if (i) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])); }
+    const L = cum[M], ds = 0.5, n = Math.floor(L / ds), x = new Float32Array(n + 1), y = new Float32Array(n + 1); let j = 0;
+    for (let i = 0; i <= n; i++) { const d = i * ds; while (j < M - 1 && cum[j + 1] < d) j++; const u = (d - cum[j]) / Math.max(1e-9, cum[j + 1] - cum[j]); x[i] = pts[j][0] + (pts[j + 1][0] - pts[j][0]) * u; y[i] = pts[j][1] + (pts[j + 1][1] - pts[j][1]) * u; }
+    return { L: n * ds, ds, n, x, y };
+  }
+  function at(P, s) { let f = s / P.ds; if (f < 0) f = 0; if (f > P.n - 1.001) f = P.n - 1.001; const i = f | 0, u = f - i; return [P.x[i] + (P.x[i + 1] - P.x[i]) * u, P.y[i] + (P.y[i + 1] - P.y[i]) * u]; }
+  function tan(P, s) { const a = at(P, s - 1), b = at(P, s + 1), dx = b[0] - a[0], dy = b[1] - a[1], h = Math.hypot(dx, dy) || 1; return [dx / h, dy / h]; }
+  function present(s) { const m = new Set(); for (const b of s.chain) m.add(b.c); return m; }
+  function pickColor(s) { const m = [...present(s)]; if (!m.length) return (s.R() * s.C) | 0; return m[(s.R() * m.length) | 0]; }
+  function create(o) {
+    const P = mkPath(o), R = prng(o.seed * 7 + 1), seq = [];
+    for (let i = 0; i < o.N; i++) { let c = (R() * o.C) | 0, g = 0; while (i >= 2 && seq[i - 1] === c && seq[i - 2] === c && g++ < 20) c = (R() * o.C) | 0; seq.push(c); }
+    const s = { P, L: P.L, N: o.N, C: o.C, v: o.v, seq, spawned: 1, chain: [{ s: 0, c: seq[0], ofs: 0, age: 1 }], R: prng(o.seed * 13 + 5), shot: null, cur: 0, nxt: 0, score: 0, t: 0, cool: 0, combo: 0, maxF: 0, done: 0, ev: 0, removed: 0, shots: 0 };
+    s.cur = pickColor(s); s.nxt = pickColor(s); return s;
+  }
+  function adj(ch, j) { return ch[j - 1].s - ch[j].s <= D + 0.3; }
+  function runAt(ch, i) { const c = ch[i].c; let lo = i, hi = i; while (lo > 0 && ch[lo - 1].c === c && adj(ch, lo)) lo--; while (hi < ch.length - 1 && ch[hi + 1].c === c && adj(ch, hi + 1)) hi++; return [lo, hi]; }
+  function check(s, i) { const ch = s.chain, [lo, hi] = runAt(ch, i), cnt = hi - lo + 1; if (cnt < 3) return 0; ch.splice(lo, cnt); s.score += cnt * 10 * (1 + s.combo); s.removed += cnt; s.ev = 2; return cnt; }
+  function hitIdx(s, x, y) { const ch = s.chain; let best = -1, bd = 1e9; for (let i = 0; i < ch.length; i++) { const p = at(s.P, ch[i].s), dx = p[0] - x, dy = p[1] - y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = i; } } return bd < (D * 0.95) * (D * 0.95) ? best : -1; }
+  function slot(s, k, x, y) { const b = s.chain[k], p = at(s.P, b.s), t = tan(s.P, b.s); return (x - p[0]) * t[0] + (y - p[1]) * t[1] > 0 ? k : k + 1; }
+  function insert(s, k) {
+    const ch = s.chain, h = s.shot, i = slot(s, k, h.x, h.y); let sn = i >= ch.length ? ch[ch.length - 1].s - D : ch[i].s + D; if (sn < 0) sn = 0;
+    ch.splice(i, 0, { s: sn, c: h.c, ofs: 0, age: 0 });
+    for (let j = i - 1; j >= 0; j--) { const need = ch[j + 1].s + D; if (ch[j].s < need) { ch[j].ofs -= need - ch[j].s; ch[j].s = need; } else break; }
+    s.shot = null; s.combo = 0; if (!check(s, i)) s.ev = 1;
+  }
+  function step(s) {
+    if (s.done) return; s.t += DT; s.ev = 0; if (s.cool > 0) s.cool -= DT; const ch = s.chain; let joined = -1;
+    if (ch.length) { ch[0].s += s.v * (ch[0].s < s.L * 0.2 ? 3 : 1) * DT; }
+    for (let i = 1; i < ch.length; i++) {
+      if (ch[i - 1].s - ch[i].s > D + 0.02) { ch[i].s += (s.v + CATCH) * DT; if (ch[i].s >= ch[i - 1].s - D) { ch[i].s = ch[i - 1].s - D; if (joined < 0) joined = i; } } else ch[i].s = ch[i - 1].s - D;
+    }
+    for (const b of ch) { if (b.ofs) { b.ofs += (b.ofs < 0 ? 1 : -1) * Math.min(Math.abs(b.ofs), 80 * DT); } if (b.age < 1) b.age = Math.min(1, b.age + DT * 5); }
+    if (s.spawned < s.N) { const tl = ch[ch.length - 1]; if (!tl) ch.push({ s: 0, c: s.seq[s.spawned++], ofs: 0, age: 0 }); else if (tl.s - D >= 0) ch.push({ s: tl.s - D, c: s.seq[s.spawned++], ofs: 0, age: 0 }); }
+    if (joined >= 0 && joined < ch.length && ch[joined - 1].c === ch[joined].c) { if (check(s, joined)) s.combo++; }
+    const h = s.shot;
+    if (h) { h.x += h.dx * SHOT_V * DT; h.y += h.dy * SHOT_V * DT; if (h.x < -MX || h.x > 100 + MX || h.y < -MX || h.y > 160 + MX) { s.shot = null; s.ev = 3; } else { const k = hitIdx(s, h.x, h.y); if (k >= 0) insert(s, k); } }
+    if (!ch.length && s.spawned >= s.N) { s.done = 1; return; }
+    if (ch.length) { s.maxF = Math.max(s.maxF, ch[0].s / s.L); if (ch[0].s >= s.L - 0.5) s.done = -1; }
+  }
+  function fire(s, ang) {
+    if (s.done || s.shot || s.cool > 0) return 0; if (!present(s).has(s.cur)) s.cur = pickColor(s);
+    s.shot = { x: CX + Math.cos(ang) * 6, y: CY + Math.sin(ang) * 6, dx: Math.cos(ang), dy: Math.sin(ang), c: s.cur }; s.cool = 0.2; s.cur = s.nxt; s.nxt = pickColor(s); s.shots++; return 1;
+  }
+  function swap(s) { const t = s.cur; s.cur = s.nxt; s.nxt = t; }
+  // חיזוי פגיעה (לבוט): איזה כדור נפגע, והאם תהיה התאמה
+  function simHit(s, ang, col) {
+    const ch = s.chain, dx = Math.cos(ang), dy = Math.sin(ang); let x = CX + dx * 6, y = CY + dy * 6;
+    for (let st = 0; st < 90; st++) { x += dx * 2; y += dy * 2; if (x < -MX || x > 100 + MX || y < -MX || y > 160 + MX) return null; const k = hitIdx(s, x, y); if (k >= 0) {
+      const i = slot(s, k, x, y); let run = 1, l = i - 1, r = i;
+      while (l >= 0 && ch[l].c === col && (l === i - 1 || adj(ch, l + 1))) { run++; l--; }
+      while (r < ch.length && ch[r].c === col && (r === i || adj(ch, r))) { run++; r++; }
+      return { k, i, run, rem: run >= 3 ? run : 0, prog: ch[k].s / s.L }; } }
+    return null;
+  }
+  const DELAY = [0, 1.7, 1.15, 0.8, 0.5];
+  function botNew(lvl, seed) { return { lvl, R: prng(seed * 31 + 9), tm: DELAY[lvl] * 0.8 + 0.5, want: null }; }
+  function botAct(b, s, dt) {
+    if (s.done) return; b.tm -= dt; if (b.tm > 0) return; if (s.shot || s.cool > 0) return; if (!s.chain.length) return;
+    const R = b.R, lv = b.lvl; let best = null, bs = -1e9;
+    const cands = []; const n = lv === 1 ? 1 : lv === 2 ? 16 : 72;
+    for (let i = 0; i < n; i++) cands.push(lv >= 3 ? (i / 72) * 2 * Math.PI : R() * 2 * Math.PI);
+    for (const sw of lv >= 3 ? [0, 1] : [0]) { const col = sw ? s.nxt : s.cur; for (const a of cands) { const h = simHit(s, a, col); if (!h) continue; const sc = lv === 1 ? R() : (lv === 2 ? (h.rem ? 100 : 0) + h.run * 3 : (h.rem ? 100 + h.rem * 5 : 0) + h.run * 10 + h.prog * (lv === 4 ? 40 : 8)) + R() * 0.5; if (sc > bs) { bs = sc; best = { a, sw }; } } }
+    if (!best) { b.tm = 0.2; return; }
+    let a = best.a; if (lv <= 2) a += (R() - 0.5) * 0.06 * (3 - lv); else a += (R() - 0.5) * (lv === 3 ? 0.04 : 0.012);
+    if (best.sw) swap(s); fire(s, a); b.tm = DELAY[lv] * (0.8 + R() * 0.5);
+  }
+  function level(n) {
+    const t = (n - 1) / 29;
+    return { n, seed: n * 37 + 11, N: Math.round(22 + 28 * t), C: n <= 5 ? 3 : n <= 20 ? 4 : 5, turns: 2 + 0.5 * t, rIn: 15, rOut: 44, wob: n > 6 ? 2.6 * t : 0, wf: 3, dir: n % 2 ? 1 : -1, th0: (n * 1.3) % 6.28, v: +(4 + 4.5 * t).toFixed(2) };
+  }
+  function raceCfg(seed, lvl) { return { seed, N: 36, C: 4, turns: 2.3, rIn: 15, rOut: 44, wob: 1.5, wf: 3, dir: seed % 2 ? 1 : -1, th0: (seed * 1.7) % 6.28, v: 3.5 + lvl * 1.3 }; }
+  const api = { DT, D, CX, CY, create, step, fire, swap, simHit, botNew, botAct, level, raceCfg, at, tan, present };
+  if (typeof module !== 'undefined') module.exports = api; else root.Chain = api;
+})(typeof self !== 'undefined' ? self : this);
+
 /* ===== src/i18n.js ===== */
 /* ThinkNest — תרגומים: עברית, אנגלית, רוסית, ספרדית, ערבית. מפתח חסר ← אנגלית. */
 const LANG = {
@@ -1954,6 +2041,19 @@ ar: {
   for (const l in A) Object.assign(LANG[l], A[l]);
 })();
 
+/* ===== src/i18n_chain.js ===== */
+/* מחרוזות של שרשרת הביצים */
+(function () {
+  const A = {
+    he: {"g_chain": "שרשרת הביצים", "d_chain": "יורים ביצים וממתינים לשלוש", "ch_help": "גררו כדי לכוון, שחררו כדי לירות. הקשה על הציפור מחליפה ביצה", "ch_race": "כוון וירו — מי שמנקה ראשון מנצח", "ch_score": "ניקוד: {n}", "ch_fell": "השרשרת הגיעה לבור", "ch_cleared": "נוקה", "ru_chain": "<p>שרשרת של ביצים צבעוניות מתגלגלת בספירלה לכיוון הבור. הציפור במרכז יורה ביצים: <b>גררו</b> כדי לכוון ו<b>שחררו</b> כדי לירות. הקשה על הציפור מחליפה בין הביצה הנוכחית לביצה הבאה.</p><p>כשהביצה שלכם נוגעת בשרשרת ונוצרות <b>3 או יותר</b> באותו צבע בשורה — הן נעלמות. ההתאמה יכולה לסגור פער ולהפעיל שרשרת של ניקוי נוסף. לכל ביצה יש גם סימן בתוכה (נקודות, פס, זיגזג, טבעת) כדי להבדיל בין צבעים.</p><p>שלבים: נקו את כל השרשרת לפני שתגיע לבור. כוכבים — לפי כמה רחוק היא התקרבה. מול המחשב, בשניים ואונליין: כל אחד עם שרשרת זהה, <b>מי שמנקה ראשון מנצח</b> (ומי שהשרשרת שלו הגיעה לבור מפסיד).</p>"},
+    en: {"g_chain": "Egg Chain", "d_chain": "Shoot eggs, match three", "ch_help": "Drag to aim, release to shoot. Tap the bird to swap eggs", "ch_race": "Aim and shoot — first to clear wins", "ch_score": "Score: {n}", "ch_fell": "The chain reached the pit", "ch_cleared": "cleared", "ru_chain": "<p>A chain of coloured eggs rolls along a spiral toward the pit. The bird in the middle shoots eggs: <b>drag</b> to aim and <b>release</b> to shoot. Tap the bird to swap the current egg with the next one.</p><p>When your egg touches the chain and <b>3 or more</b> of the same colour line up, they vanish. A match can close a gap and trigger a chain reaction. Each egg also has a mark inside (dots, bar, zigzag, ring) so colours are easy to tell apart.</p><p>Levels: clear the whole chain before it reaches the pit; stars depend on how close it got. Vs computer, two players and online: identical chains, <b>first to clear wins</b> (whoever's chain reaches the pit loses).</p>"},
+    ru: {"g_chain": "Цепочка яиц", "d_chain": "Стреляйте яйцами, собирайте по три", "ch_help": "Тяните, чтобы целиться, отпустите — выстрел. Нажмите на птицу, чтобы поменять яйцо", "ch_race": "Целься и стреляй — кто очистит первым, тот победил", "ch_score": "Очки: {n}", "ch_fell": "Цепочка дошла до ямы", "ch_cleared": "очищено", "ru_chain": "<p>Цепочка разноцветных яиц катится по спирали к яме. Птица в центре стреляет яйцами: <b>тяните</b>, чтобы прицелиться, и <b>отпустите</b> для выстрела. Нажатие на птицу меняет текущее яйцо со следующим.</p><p>Когда яйцо касается цепочки и выстраиваются <b>3 и более</b> одного цвета, они исчезают. Совпадение может закрыть разрыв и вызвать цепную реакцию. На каждом яйце есть знак (точки, полоса, зигзаг, кольцо), чтобы цвета легче различались.</p><p>Уровни: очистите всю цепочку, пока она не дошла до ямы; звёзды — по тому, насколько близко она подошла. Против компьютера, вдвоём и онлайн: одинаковые цепочки, <b>побеждает тот, кто очистит первым</b> (чья цепочка дошла до ямы — проигрывает).</p>"},
+    es: {"g_chain": "Cadena de huevos", "d_chain": "Dispara huevos y une tres", "ch_help": "Arrastra para apuntar y suelta para disparar. Toca el pájaro para cambiar de huevo", "ch_race": "Apunta y dispara: gana quien limpie primero", "ch_score": "Puntos: {n}", "ch_fell": "La cadena llegó al hoyo", "ch_cleared": "limpio", "ru_chain": "<p>Una cadena de huevos de colores rueda en espiral hacia el hoyo. El pájaro del centro dispara huevos: <b>arrastra</b> para apuntar y <b>suelta</b> para disparar. Toca el pájaro para cambiar el huevo actual por el siguiente.</p><p>Cuando tu huevo toca la cadena y se juntan <b>3 o más</b> del mismo color, desaparecen. Una combinación puede cerrar un hueco y provocar una reacción en cadena. Cada huevo lleva una marca (puntos, barra, zigzag, anillo) para distinguir los colores.</p><p>Niveles: limpia toda la cadena antes de que llegue al hoyo; las estrellas dependen de lo cerca que llegó. Contra el ordenador, dos jugadores y online: cadenas idénticas, <b>gana quien limpie primero</b> (pierde aquel cuya cadena llega al hoyo).</p>"},
+    ar: {"g_chain": "سلسلة البيض", "d_chain": "أطلق البيض وطابق ثلاثاً", "ch_help": "اسحب للتصويب وأفلت للإطلاق. المس الطائر لتبديل البيضة", "ch_race": "صوّب وأطلق — من ينظّف أولاً يفوز", "ch_score": "النقاط: {n}", "ch_fell": "وصلت السلسلة إلى الحفرة", "ch_cleared": "تم تنظيفه", "ru_chain": "<p>سلسلة من البيض الملوّن تتدحرج في شكل حلزوني نحو الحفرة. الطائر في الوسط يطلق البيض: <b>اسحب</b> للتصويب و<b>أفلت</b> للإطلاق. المس الطائر لتبديل البيضة الحالية بالتالية.</p><p>عندما تلمس بيضتك السلسلة وتصطف <b>3 أو أكثر</b> من اللون نفسه تختفي. قد يغلق التطابق فجوة ويشعل تفاعلاً متسلسلاً. على كل بيضة علامة (نقاط، شريط، زجزاج، حلقة) للتمييز بين الألوان.</p><p>المراحل: نظّف السلسلة كلها قبل أن تصل إلى الحفرة؛ النجوم حسب مدى اقترابها. ضد الحاسوب ولاعبين وأونلاين: سلاسل متطابقة، <b>من ينظّف أولاً يفوز</b> (ومن تصل سلسلته إلى الحفرة يخسر).</p>"},
+  };
+  for (const l in A) Object.assign(LANG[l], A[l]);
+})();
+
 /* ===== src/i18n_shell.js ===== */
 /* מחרוזות המעטפת: בית, הגדרות, אודות, חוקים, סטטיסטיקה, אלבום, מדריך */
 (function () {
@@ -2022,7 +2122,7 @@ ar: {
 /* ===== src/app.js ===== */
 'use strict';
 /* ThinkNest — מעטפת: שפות, אחסון, ניווט, מסכים, אונליין (NestLink). המשחקים נרשמים ב-Games. */
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '2.0.0';
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const store = {
@@ -4787,10 +4887,156 @@ window.__tn = { get run() { return activeRun; }, get sc() { return curSc; }, get
   function closeAllOv() { while (overlays.length) { const o = overlays[overlays.length - 1]; if (o === guideEl) break; closeOv(o); } }
 })();
 
+/* ===== src/chain_ui.js ===== */
+'use strict';
+/* שרשרת הביצים — ציפור במרכז יורה ביצים צבעוניות על שרשרת שמתגלגלת אל הבור. שלבים (כוכבים לפי כמה קרבה לבור), מירוץ מול המחשב, מסך מפוצל לשניים, מירוץ אונליין. המנוע: Chain. */
+(function () {
+  const E = Chain, LV = []; for (let n = 1; n <= 30; n++) LV.push(E.level(n));
+  const COL = ['#e5484d', '#3d8bfd', '#3fb950', '#f2c230', '#a45ee5'], DK = ['#9c1d22', '#1f55b3', '#1f7a2e', '#a67d00', '#6a2fa8'];
+  class Lane {
+    constructor(cfg, who, bot) { this.cfg = cfg; this.s = E.create(cfg); this.who = who; this.bot = bot ? E.botNew(bot, who + 5) : null; this.aim = -Math.PI / 2; this.down = false; this.fx = []; this.ptr = null; }
+  }
+  class Run {
+    constructor(cfg) {
+      this.cfg = cfg; this.mode = cfg.mode; this.dead = false; this.paused = false; this.net = cfg.mode === 'online'; this.race = this.mode !== 'solo'; this.state = this.race ? 'count' : 'play'; this.cd = 3.2; this.lastCd = 4; this.t = 0; this.acc = 0; this.opp = null; this.sentT = 0;
+      if (this.mode === 'solo') { this.lv = cfg.lv; this.lanes = [new Lane(cfg.lv, 0)]; }
+      else { const rc = E.raceCfg(cfg.seed, cfg.lv || 3); this.lanes = this.mode === 'cpu' ? [new Lane(rc, 0), new Lane(rc, 1, cfg.lv)] : this.mode === 'two' ? [new Lane(rc, 0), new Lane(rc, 1)] : [new Lane(rc, 0)]; }
+      this.build(); this.last = performance.now(); this.raf = requestAnimationFrame(t => this.loop(t));
+      this._rs = () => this.layout(); window.addEventListener('resize', this._rs); if (this.net) Net.handler = this;
+    }
+    build() {
+      const el = $('#play');
+      el.innerHTML = `<div class="hud"><button class="ib" data-pause>⏸</button><div class="stat" data-stat></div><button class="ib" data-snd>${S.sound ? '🔊' : '🔇'}</button></div>
+      <div class="boardwrap" data-bw style="flex:1;display:flex;gap:6px;align-items:stretch;justify-content:center;padding:0;direction:ltr">${this.lanes.map(() => '<canvas style="flex:1;min-width:0;border-radius:12px"></canvas>').join('')}</div>
+      <div class="hint" data-msg style="min-height:30px;text-align:center"></div>${this.net ? Net.voiceBar() : ''}<div class="countdown" data-cd></div>`;
+      this.el = el; this.bw = $('[data-bw]', el); this.msg = $('[data-msg]', el); this.cvs = $$('canvas', this.bw);
+      $('[data-pause]', el).onclick = () => this.onBack(); $('[data-snd]', el).onclick = e => { S.sound = !S.sound; saveS(); e.currentTarget.textContent = S.sound ? '🔊' : '🔇'; };
+      this.cvs.forEach((cv, i) => {
+        const L = this.lanes[i]; L.cv = cv; cv.style.touchAction = 'none'; if (L.bot) return;
+        const aimOf = e => { const r = cv.getBoundingClientRect(), x = (e.clientX - r.left - L.ox) / L.sc, y = (e.clientY - r.top - L.oy) / L.sc; return [x, y]; };
+        cv.addEventListener('pointerdown', e => { e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (_) {} const [x, y] = aimOf(e); if (Math.hypot(x - E.CX, y - E.CY) < 9 && this.canPlay()) { E.swap(L.s); SFX.tap(); L.down = false; return; } L.down = true; L.ptr = e.pointerId; L.aim = Math.atan2(y - E.CY, x - E.CX); });
+        cv.addEventListener('pointermove', e => { if (L.down && L.ptr === e.pointerId) { const [x, y] = aimOf(e); L.aim = Math.atan2(y - E.CY, x - E.CX); } });
+        const up = e => { if (!L.down || L.ptr !== e.pointerId) return; L.down = false; if (this.canPlay() && E.fire(L.s, L.aim)) SFX.tap(); }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', () => { L.down = false; });
+      });
+      if (this.net) Net.wireVoice(el); this.msg.textContent = this.race ? T('ch_race') : T('ch_help'); setTimeout(() => this.layout(), 0);
+    }
+    canPlay() { return this.state === 'play' && !this.paused; }
+    layout() { const d = Math.min(window.devicePixelRatio || 1, 2); for (const L of this.lanes) { const r = L.cv.getBoundingClientRect(); L.w = Math.max(60, r.width); L.h = Math.max(100, r.height); L.cv.width = Math.round(L.w * d); L.cv.height = Math.round(L.h * d); L.ctx = L.cv.getContext('2d'); L.ctx.setTransform(d, 0, 0, d, 0, 0); L.sc = Math.min(L.w / 100, L.h / 160); L.ox = (L.w - 100 * L.sc) / 2; L.oy = (L.h - 160 * L.sc) / 2; } }
+    onMessage(m) {
+      if (m.type === 'pg') this.opp = { p: m.p, t: performance.now() };
+      else if (m.type === 'over') { if (this.state === 'play') { this.state = 'end'; this.finish(1); } }
+      else if (m.type === 'dead') { if (this.state === 'play') { this.state = 'end'; this.finish(0); } }
+      else if (m.type === 'bye') { if (this.state !== 'end' && this.state !== 'fin') { toast(T('on_left')); this.state = 'end'; this.finish(0); } }
+      else if (m.type === 'again') { if (Net.link.session.role === 'host') { const msg = G.onlineStartMsg(); Net.link.send(msg); Net.onMessage(msg, 0); } }
+    }
+    onNetStatus(st) { if (st === 'reconnecting') toast(T('on_reconn'), 3000); }
+    onRoster() {}
+    nameOf(i) { if (this.mode === 'two') return T(i ? 'p2' : 'p1'); if (this.net) return i ? T('opp') : T('you'); return i ? T('bot') : T('you'); }
+    finish(res) { // solo: 0 ניצחון, 1 הפסד; מירוץ: אינדקס המנצח
+      if (this.state === 'fin') return; this.state = 'fin'; const m = this.mode, st = pg('chain'); let html = '', btns = '';
+      if (m === 'solo') {
+        const s = this.lanes[0].s, n = this.lv.n;
+        if (res === 0) { const stars = s.maxF < 0.45 ? 3 : s.maxF < 0.75 ? 2 : 1; if (stars > (st.lv[n] || 0)) st.lv[n] = stars; st.games++; st.wins++; saveP(); Meta.after('chain', 'solo', true, n); SFX.win(); html = `<h3>${T('done')}</h3><div class="big-st">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</div><p>${T('ch_score', { n: s.score })}</p>`; if (n < LV.length) btns += `<button class="btn pri" data-e="next">${T('next_level')}</button>`; btns += `<button class="btn" data-e="again">${T('retry')}</button><button class="btn" data-e="quit">${T('m_solo')}</button>`; }
+        else { st.games++; saveP(); Meta.after('chain', 'solo', false, n); SFX.lose(); html = `<h3>${T('ch_fell')}</h3><p>${T('ch_score', { n: s.score })}</p>`; btns = `<button class="btn pri" data-e="again">${T('retry')}</button><button class="btn" data-e="quit">${T('m_solo')}</button>`; }
+      } else {
+        let title, win = false; if (m === 'two') title = T('p_wins', { n: T(res ? 'p2' : 'p1') }); else { win = res === 0; title = win ? T('win') : T('lose'); }
+        if (m === 'two') { Meta.after('chain', 'two', true); SFX.win(); } else { st.games++; if (win) st.wins++; saveP(); Meta.after('chain', m, win); win ? SFX.win() : SFX.lose(); }
+        html = `<h3>${title}</h3>`; btns = `<button class="btn pri" data-e="again">${T(this.net ? 'rematch' : 'retry')}</button><button class="btn" data-e="quit">${T('home')}</button>`;
+      }
+      setTimeout(() => { const o = openOv(html + btns); o.dataset.nobk = 1; $$('[data-e]', o).forEach(b => b.onclick = () => { closeOv(o); this.endAct(b.dataset.e); }); }, 600);
+    }
+    endAct(a) {
+      const cfg = this.cfg;
+      if (a === 'quit') { if (this.net) Net.leave(); activeRun = null; this.destroy(); let prev = stack.pop() || 'home'; if (prev === 'lobby') prev = 'gmenu'; while (stack.length && stack[stack.length - 1] === prev) stack.pop(); show(prev, false); render(prev); return; }
+      if (a === 'next') { this.destroy(); G.startSolo(cfg.lv.n + 1); return; }
+      if (a === 'again') {
+        if (this.net) { if (Net.link.session.role === 'host') { const msg = G.onlineStartMsg(); Net.link.send(msg); Net.onMessage(msg, 0); } else { Net.link.send({ type: 'again' }); toast(T('on_wait_host')); } return; }
+        this.destroy(); if (cfg.mode === 'solo') G.startSolo(cfg.lv.n); else if (cfg.mode === 'cpu') G.startCpu(cfg.lv); else G.startTwo();
+      }
+    }
+    onBack() {
+      if (this.state === 'fin') { this.endAct('quit'); return; } if (this.state === 'end' || this.paused) return; this.paused = true; const online = this.net;
+      const o = openOv(`<h3>${T('pause')}</h3><button class="btn pri" data-r>${T('resume')}</button>${online ? '' : `<button class="btn" data-x>${T('restart')}</button>`}<button class="btn" data-q>${T('quit')}</button>`);
+      o.onclose = () => { this.paused = false; };
+      $('[data-r]', o).onclick = () => closeOv(o);
+      const x = $('[data-x]', o); if (x) x.onclick = () => { o.onclose = null; closeOv(o); this.paused = false; this.endAct('again'); };
+      $('[data-q]', o).onclick = () => { o.onclose = null; closeOv(o); if (this.net && Net.link) Net.link.send({ type: 'bye' }); this.state = 'fin'; this.endAct('quit'); };
+    }
+    loop(now) {
+      if (this.dead) return; const dt = Math.min(50, now - this.last) / 1000; this.last = now; this.t += dt;
+      if (this.state === 'count') { const cd = $('[data-cd]', this.el); this.cd -= dt; const n = Math.ceil(this.cd); if (this.cd > 0) { if (n !== this.lastCd) { this.lastCd = n; if (n <= 3) { cd.textContent = n; SFX.count(); } } } else { cd.textContent = ''; this.state = 'play'; SFX.go(); } }
+      if (this.state === 'play' && !this.paused) {
+        this.acc += dt; let guard = 0;
+        while (this.acc >= E.DT && guard++ < 6) {
+          this.acc -= E.DT;
+          for (const L of this.lanes) { if (L.s.done) continue; if (L.bot) E.botAct(L.bot, L.s, E.DT); E.step(L.s); this.fx(L); }
+          if (this.mode === 'solo') { const d = this.lanes[0].s.done; if (d) { this.state = 'end'; setTimeout(() => this.finish(d === 1 ? 0 : 1), 700); break; } }
+          else { const w = this.lanes.findIndex(L => L.s.done === 1), l = this.lanes.findIndex(L => L.s.done === -1);
+            if (w >= 0 || l >= 0) { this.state = 'end'; const win = w >= 0 ? w : 1 - l; if (this.net && Net.link.isOpen()) Net.link.send({ type: win === 0 ? 'over' : 'dead' }); setTimeout(() => this.finish(win), 700); break; } }
+        }
+        if (this.net && Net.link.isOpen() && this.t - this.sentT > 0.2) { this.sentT = this.t; Net.link.send({ type: 'pg', p: +this.prog(this.lanes[0]).toFixed(3) }); }
+      }
+      this.draw(); this.raf = requestAnimationFrame(t => this.loop(t));
+    }
+    prog(L) { const s = L.s; return Math.max(0, Math.min(1, 1 - (s.chain.length + s.N - s.spawned) / s.N)); }
+    fx(L) { const e = L.s.ev; if (!e || (L.who !== 0 && this.mode !== 'two')) return; if (e === 1) SFX.tap(); else if (e === 2) { SFX.rot(); vib(12); L.fx.push({ t: 0, txt: '+' + (L.s.score) }); } else if (e === 3) SFX.hit(); }
+    egg(c, x, y, r, col, al, sc) {
+      const im = Art.get('chain-' + col); c.globalAlpha = al == null ? 1 : al; const k = sc == null ? 1 : sc; r *= k;
+      if (im) c.drawImage(im, x - r * 1.1, y - r * 1.1, r * 2.2, r * 2.2);
+      else { c.fillStyle = DK[col]; c.beginPath(); c.ellipse(x, y + r * 0.08, r * 0.92, r * 1.02, 0, 0, 7); c.fill(); c.fillStyle = COL[col]; c.beginPath(); c.ellipse(x, y, r * 0.88, r, 0, 0, 7); c.fill();
+        c.strokeStyle = 'rgba(255,255,255,.75)'; c.fillStyle = 'rgba(255,255,255,.75)'; c.lineWidth = Math.max(1.5, r * 0.16);
+        if (col === 1) { for (const [a, b] of [[-0.4, -0.2], [0.35, 0], [-0.1, 0.45]]) { c.beginPath(); c.arc(x + a * r, y + b * r, r * 0.16, 0, 7); c.fill(); } }
+        else if (col === 2) { c.beginPath(); c.moveTo(x - r * 0.8, y); c.lineTo(x + r * 0.8, y); c.stroke(); }
+        else if (col === 3) { c.beginPath(); c.moveTo(x - r * 0.6, y - r * 0.3); c.lineTo(x - r * 0.2, y + r * 0.2); c.lineTo(x + r * 0.2, y - r * 0.3); c.lineTo(x + r * 0.6, y + r * 0.2); c.stroke(); }
+        else if (col === 4) { c.beginPath(); c.arc(x, y + r * 0.05, r * 0.38, 0, 7); c.stroke(); }
+        c.fillStyle = 'rgba(255,255,255,.4)'; c.beginPath(); c.ellipse(x - r * 0.35, y - r * 0.5, r * 0.22, r * 0.14, -0.6, 0, 7); c.fill(); }
+      c.globalAlpha = 1;
+    }
+    drawLane(L) {
+      const c = L.ctx; if (!c) return; const W = L.w, H = L.h, sc = L.sc, s = L.s, P = s.P, X = x => L.ox + x * sc, Y = y => L.oy + y * sc, r = E.D / 2 * sc;
+      c.clearRect(0, 0, W, H); const bg = Art.get('chain-lane'); if (bg) c.drawImage(bg, 0, 0, W, H); else { c.fillStyle = 'rgba(70,110,50,.28)'; c.beginPath(); c.roundRect(0, 0, W, H, 12); c.fill(); }
+      c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); for (let i = 0; i <= P.n; i += 6) { const x = X(P.x[i]), y = Y(P.y[i]); i ? c.lineTo(x, y) : c.moveTo(x, y); } c.strokeStyle = 'rgba(60,40,20,.55)'; c.lineWidth = r * 2.5; c.stroke(); c.strokeStyle = 'rgba(130,95,55,.45)'; c.lineWidth = r * 2.0; c.stroke();
+      const hx = X(P.x[P.n]), hy = Y(P.y[P.n]), danger = Math.max(0, (s.maxF - 0.6) / 0.4), hi = Art.get('chain-hole'); if (hi) c.drawImage(hi, hx - r * 1.8, hy - r * 1.8, r * 3.6, r * 3.6); else { c.fillStyle = '#16100a'; c.beginPath(); c.arc(hx, hy, r * 1.5, 0, 7); c.fill(); if (danger) { c.strokeStyle = `rgba(255,70,50,${0.4 + 0.4 * Math.sin(this.t * 8)})`; c.lineWidth = 3; c.stroke(); } }
+      const ch = s.chain; for (let i = ch.length - 1; i >= 0; i--) { const b = ch[i], p = E.at(P, b.s + b.ofs); this.egg(c, X(p[0]), Y(p[1]), r, b.c, 1, 0.55 + 0.45 * Math.min(1, b.age)); }
+      // ציפור
+      const bx = X(E.CX), by = Y(E.CY), bi = Art.get('chain-bird'); c.save(); c.translate(bx, by); c.rotate(L.aim + Math.PI / 2);
+      if (bi) c.drawImage(bi, -r * 2.4, -r * 2.4, r * 4.8, r * 4.8); else { c.fillStyle = L.who ? '#e8884a' : '#4aa8e8'; c.beginPath(); c.arc(0, 0, r * 2, 0, 7); c.fill(); c.fillStyle = 'rgba(255,255,255,.3)'; c.beginPath(); c.arc(-r * 0.6, -r * 0.6, r * 0.7, 0, 7); c.fill(); c.fillStyle = '#f2b130'; c.beginPath(); c.moveTo(-r * 0.6, -r * 1.8); c.lineTo(r * 0.6, -r * 1.8); c.lineTo(0, -r * 3); c.closePath(); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(-r * 0.7, -r * 0.9, r * 0.45, 0, 7); c.arc(r * 0.7, -r * 0.9, r * 0.45, 0, 7); c.fill(); c.fillStyle = '#222'; c.beginPath(); c.arc(-r * 0.7, -r * 0.9, r * 0.2, 0, 7); c.arc(r * 0.7, -r * 0.9, r * 0.2, 0, 7); c.fill(); }
+      c.restore();
+      if (!s.done) { this.egg(c, bx + Math.cos(L.aim) * r * 1.9, by + Math.sin(L.aim) * r * 1.9, r * 0.95, s.cur, 1); this.egg(c, bx - r * 3, by + r * 3, r * 0.6, s.nxt, 0.9); }
+      if (L.down && !L.bot && !s.done) { c.setLineDash([r * 0.5, r * 0.7]); c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = Math.max(2, r * 0.25); c.beginPath(); c.moveTo(bx + Math.cos(L.aim) * r * 3.6, by + Math.sin(L.aim) * r * 3.6); c.lineTo(bx + Math.cos(L.aim) * r * 12, by + Math.sin(L.aim) * r * 12); c.stroke(); c.setLineDash([]); }
+      if (s.shot) this.egg(c, X(s.shot.x), Y(s.shot.y), r, s.shot.c, 1);
+      L.fx = L.fx.filter(f => (f.t += 0.016) < 0.8);
+    }
+    draw() {
+      for (const L of this.lanes) this.drawLane(L);
+      const st = $('[data-stat]', this.el); let h;
+      if (this.mode === 'solo') { const s = this.lanes[0].s; h = `<span>${this.lv.n}<small>${T('s_level')}</small></span><span>${Math.round(this.prog(this.lanes[0]) * 100)}%<small>${T('ch_cleared')}</small></span><span>${s.score}<small>${T('m_scorel')}</small></span>`; }
+      else { h = this.lanes.map((L, i) => `<span style="color:${i ? '#e8884a' : '#4aa8e8'}">${Math.round(this.prog(L) * 100)}%<small>${esc(this.nameOf(i))}</small></span>`).join('') + (this.net ? `<span style="color:#e8884a">${this.opp ? Math.round(this.opp.p * 100) + '%' : '–'}<small>${T('opp')}</small></span>` : ''); }
+      if (st.dataset.h !== h) { st.dataset.h = h; st.innerHTML = h; }
+    }
+    destroy() { this.dead = true; cancelAnimationFrame(this.raf); window.removeEventListener('resize', this._rs); if (this.net && Net.handler === this) Net.handler = null; }
+  }
+  function launch(cfg) {
+    if (activeRun) { try { activeRun.destroy(); } catch (e) {} activeRun = null; }
+    curGame = 'chain'; setPlayBg('chain'); const was = curSc; show('play', was !== 'play'); const r = new Run(cfg); activeRun = r; return r;
+  }
+  const G = Games.chain = {
+    ready: true, modes: ['solo', 'cpu', 'two', 'online'], levels: LV,
+    art() { return '<svg viewBox="0 0 90 70" width="90" height="70"><path d="M8 58 C8 20 50 8 70 28 C84 44 62 58 50 46" fill="none" stroke="#6b4a28" stroke-width="12" stroke-linecap="round" opacity=".6"/><ellipse cx="14" cy="52" rx="7" ry="8" fill="#3d8bfd"/><ellipse cx="14" cy="36" rx="7" ry="8" fill="#e5484d"/><ellipse cx="24" cy="22" rx="7" ry="8" fill="#3fb950"/><ellipse cx="42" cy="15" rx="7" ry="8" fill="#f2c230"/><ellipse cx="60" cy="19" rx="7" ry="8" fill="#e5484d"/><circle cx="52" cy="46" r="10" fill="#4aa8e8"/><path d="M48 38 l8 0 l-4 -8z" fill="#f2b130"/></svg>'; },
+    startSolo(n) { launch({ mode: 'solo', lv: LV[n - 1] }); },
+    startCpu(lv) { launch({ mode: 'cpu', lv, seed: 1 + ((Math.random() * 900) | 0) }); },
+    startTwo() { launch({ mode: 'two', seed: 1 + ((Math.random() * 900) | 0) }); },
+    onlineStartMsg() { return { type: 'start', game: 'chain', seed: 1 + ((Math.random() * 900) | 0) }; },
+    startOnline(m) { closeAllOv(); launch({ mode: 'online', seed: m.seed }); },
+    isRunning: () => !!activeRun
+  };
+  function closeAllOv() { while (overlays.length) { const o = overlays[overlays.length - 1]; if (o === guideEl) break; closeOv(o); } }
+})();
+
 /* ===== src/shell2.js ===== */
 'use strict';
 /* ThinkNest — מעטפת AppNest מלאה: בית, אתגר יומי, מדבקות, חוקים, הישגים, הגדרות, גיבוי, אודות, מדריך. */
-const GAME_IDS = ['tetris', 'screws', 'rope', 'td', 'cata', 'arty', 'eggs', 'ants', 'tower', 'sand', 'jump', 'hide', 'match'], GICON = { tetris: '🧱', screws: '🔩', rope: '🍓', td: '🐞', cata: '🌰', arty: '🎯', eggs: '🥚', ants: '🐜', tower: '🏗️', sand: '💎', jump: '🐿️', hide: '🪺', match: '🍓' };
+const GAME_IDS = ['tetris', 'screws', 'rope', 'td', 'cata', 'arty', 'eggs', 'ants', 'tower', 'sand', 'jump', 'hide', 'match', 'chain'], GICON = { tetris: '🧱', screws: '🔩', rope: '🍓', td: '🐞', cata: '🌰', arty: '🎯', eggs: '🥚', ants: '🐜', tower: '🏗️', sand: '💎', jump: '🐿️', hide: '🪺', match: '🍓', chain: '🥚' };
 const STICKERS = [['first_tetris', '🧱'], ['first_screws', '🔩'], ['first_rope', '🍓'], ['first_td', '🐞'], ['stars10', '⭐'], ['stars50', '🌟'], ['stars150', '🏆'], ['three', '✨'], ['cpu', '🤖'], ['two', '👥'], ['online', '🌐'], ['daily1', '📅'], ['streak3', '🔥'], ['streak7', '☄️']];
 const META = Object.assign({ daily: { done: {}, last: '', streak: 0, best: 0 }, stk: {}, cnt: {}, last: null }, store.get('tn_meta', {}));
 const saveMeta = () => store.set('tn_meta', META);
