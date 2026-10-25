@@ -226,6 +226,8 @@ const SAND_LEVELS = [{"n":1,"W":6,"H":6,"gems":[7,25,30],"start":35,"par":13},{"
    receives events through callbacks. See NESTLINK.md for the API.
    1.1: sendTo(seat, d) — a private message to one seat only (card games:
         the host deals each player only their own cards). Compatible with 1.0.
+        Heartbeat: a phone that vanished (app closed, no signal) is marked offline
+        within ~10 s instead of looking connected forever.
         After a reconnect, if the other side already got more messages than we
         remember sending (we restored an older saved session), numbering continues
         after theirs instead of being silently ignored.
@@ -242,7 +244,7 @@ const NestLink = (() => {
   const unb64 = s => { const b = atob(s), a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; };
 
   function create(opt) {
-    const L = { status: 'off', lastErr: null, peer: null, conns: {}, retry: null, chunks: {}, calls: {}, audio: {}, mic: null, talking: false, openMic: false, rec: null };
+    const L = { status: 'off', lastErr: null, peer: null, conns: {}, retry: null, chunks: {}, calls: {}, audio: {}, mic: null, talking: false, openMic: false, rec: null, seen: {}, hb: {}, hbT: null };
     let S = null;                                         // the session — owned and persisted by the game
     const ev = (k, ...a) => { try { opt[k] && opt[k](...a); } catch (e) { console.error(e); } };
     const persist = () => ev('persist', S);
@@ -263,6 +265,7 @@ const NestLink = (() => {
     /* ---------- starting ---------- */
     async function start(session) {
       close(true); S = session; persist();
+      L.hbT = setInterval(beat, 3000);                   // after close(), which clears it
       setStatus('connecting');
       if (!(await loadPeer())) { setStatus('error', 'load'); return false; }
       const peer = L.peer = new Peer(isHost() ? roomId(S.code) : undefined, peerOpts());
@@ -296,11 +299,14 @@ const NestLink = (() => {
     function attach(c, seat) {
       let mySeat = seat;                                  // the seat at the other end of this connection
       const onOpen = () => {
-        if (!isHost()) { L.conns[0] = c; rawTo(0, { t: 'hi', cid: S.cid, name: opt.name ? opt.name() : '', have: link(0).lastIn, v: opt.version }); }
+        if (!isHost()) { L.conns[0] = c; rawTo(0, { t: 'hi', cid: S.cid, name: opt.name ? opt.name() : '', have: link(0).lastIn, v: opt.version, hb: 1 }); }
       };
       if (c.open) onOpen(); else c.on('open', onOpen);
       c.on('data', m => {
         if (!m || !m.t) return;
+        const key = isHost() ? mySeat : 0;                // 1.1 heartbeat: remember when we last heard from them
+        if (key != null) L.seen[key] = Date.now();
+        if (m.t === 'ping') { if (key != null) L.hb[key] = 1; return; }
         if (isHost() && m.t === 'hi') {                   // a guest introduces itself → give it a seat (same seat when it comes back)
           let p = S.roster.find(x => x.cid === m.cid);
           if (!p) {
@@ -312,15 +318,15 @@ const NestLink = (() => {
           mySeat = p.seat; p.name = (m.name || '').slice(0, 20); p.online = true; p.pid = c.peer;
           if ((m.have || 0) > link(mySeat).seq) link(mySeat).seq = m.have;   // 1.1: we restored an older session — keep numbering after what they already got
           if (L.conns[mySeat] && L.conns[mySeat] !== c) { try { L.conns[mySeat].close(); } catch (e) {} }
-          L.conns[mySeat] = c;
-          rawTo(mySeat, { t: 'hi', seat: mySeat, have: link(mySeat).lastIn, roster: S.roster, v: opt.version });
+          L.conns[mySeat] = c; L.seen[mySeat] = Date.now(); L.hb[mySeat] = m.hb ? 1 : 0;   // 1.1 phones announce the heartbeat
+          rawTo(mySeat, { t: 'hi', seat: mySeat, have: link(mySeat).lastIn, roster: S.roster, v: opt.version, hb: 1 });
           link(mySeat).out.filter(x => x.seq > (m.have || 0)).forEach(x => rawTo(mySeat, x));
           if (m.v && opt.version && m.v.split('.')[0] !== opt.version.split('.')[0]) ev('onVersion', m.v);
           persist(); broadcastRoster(); setStatus('open'); callEveryone();
           return;
         }
         if (!isHost() && m.t === 'hi') {
-          S.seat = m.seat; S.roster = m.roster || [];
+          S.seat = m.seat; S.roster = m.roster || []; L.seen[0] = Date.now(); L.hb[0] = m.hb ? 1 : 0;
           if ((m.have || 0) > link(0).seq) link(0).seq = m.have;            // 1.1: same protection on the guest side
           persist();
           link(0).out.filter(x => x.seq > (m.have || 0)).forEach(x => rawTo(0, x));
@@ -442,9 +448,26 @@ const NestLink = (() => {
       for (const k in L.chunks) if (Date.now() - L.chunks[k].t > 60000) delete L.chunks[k];
     }
 
+    /* ---------- 1.1 heartbeat ----------
+       A phone that closes the app or loses signal often never fires 'close'. Every 3 s we ping
+       everyone; a peer that pings (1.1+) but has been silent for 10 s is treated as gone.
+       Peers on 1.0 never ping, so they are never dropped by mistake. */
+    function beat() {
+      if (!S) return;
+      const now = Date.now();
+      for (const k in L.conns) {
+        const s = +k; rawTo(s, { t: 'ping' });
+        if (!L.hb[s] || now - (L.seen[s] || now) < 10000) continue;
+        L.hb[s] = 0; const c = L.conns[s]; delete L.conns[s]; try { c.close(); } catch (e) {}
+        stopAudioFrom(s);
+        if (isHost()) { const p = rosterEntry(s); if (p) p.online = false; persist(); broadcastRoster(); setStatus(Object.keys(L.conns).length ? 'open' : 'waiting'); }
+        else { setStatus('reconnecting'); scheduleRetry(); }
+      }
+    }
+
     /* ---------- closing ---------- */
     function close(keepSession) {
-      clearTimeout(L.retry);
+      clearTimeout(L.retry); clearInterval(L.hbT); L.hbT = null;
       Object.keys(L.audio).forEach(s => stopAudioFrom(+s));
       for (const s in L.conns) { try { L.conns[s].close(); } catch (e) {} }
       L.conns = {};
@@ -2122,7 +2145,7 @@ ar: {
 /* ===== src/app.js ===== */
 'use strict';
 /* ThinkNest — מעטפת: שפות, אחסון, ניווט, מסכים, אונליין (NestLink). המשחקים נרשמים ב-Games. */
-const APP_VERSION = '2.0.1';
+const APP_VERSION = '2.0.3';
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const store = {
@@ -5037,7 +5060,11 @@ window.__tn = { get run() { return activeRun; }, get sc() { return curSc; }, get
 'use strict';
 /* ThinkNest — מעטפת AppNest מלאה: בית, אתגר יומי, מדבקות, חוקים, הישגים, הגדרות, גיבוי, אודות, מדריך. */
 const GAME_IDS = ['tetris', 'screws', 'rope', 'td', 'cata', 'arty', 'eggs', 'ants', 'tower', 'sand', 'jump', 'hide', 'match', 'chain'], GICON = { tetris: '🧱', screws: '🔩', rope: '🍓', td: '🐞', cata: '🌰', arty: '🎯', eggs: '🥚', ants: '🐜', tower: '🏗️', sand: '💎', jump: '🐿️', hide: '🪺', match: '🍓', chain: '🥚' };
-const STICKERS = [['first_tetris', '🧱'], ['first_screws', '🔩'], ['first_rope', '🍓'], ['first_td', '🐞'], ['stars10', '⭐'], ['stars50', '🌟'], ['stars150', '🏆'], ['three', '✨'], ['cpu', '🤖'], ['two', '👥'], ['online', '🌐'], ['daily1', '📅'], ['streak3', '🔥'], ['streak7', '☄️']];
+const STICKERS = [...GAME_IDS.map(g => ['first_' + g, GICON[g]]), ['stars10', '⭐'], ['stars50', '🌟'], ['stars150', '🏆'], ['three', '✨'], ['cpu', '🤖'], ['two', '👥'], ['online', '🌐'], ['daily1', '📅'], ['streak3', '🔥'], ['streak7', '☄️']];
+(function () { // מדבקת "שלב ראשון" לכל משחק — טקסטים נבנים משם המשחק בכל שפה (אלא אם כבר קיימים)
+  const P = { he: ['שלב ראשון: ', 'סיימו שלב ראשון ב־'], en: ['First level: ', 'Finish a first level in '], ru: ['Первый уровень: ', 'Пройдите первый уровень в '], es: ['Primer nivel: ', 'Supera un primer nivel en '], ar: ['أول مرحلة: ', 'أنهِ أول مرحلة في '] };
+  for (const l in P) GAME_IDS.forEach(g => { const L = LANG[l], t = L['g_' + g] || g; if (!L['st_first_' + g]) L['st_first_' + g] = P[l][0] + t; if (!L['std_first_' + g]) L['std_first_' + g] = P[l][1] + t; });
+})();
 const META = Object.assign({ daily: { done: {}, last: '', streak: 0, best: 0 }, stk: {}, cnt: {}, last: null }, store.get('tn_meta', {}));
 const saveMeta = () => store.set('tn_meta', META);
 const dayKey = (d) => { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
